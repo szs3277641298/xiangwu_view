@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认证信息测试工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #1890ff;
+            text-align: center;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .role-selector {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #40a9ff;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e6f7ff;
+            border-left: 4px solid #1890ff;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #f6ffed;
+            border-left-color: #52c41a;
+        }
+        .error {
+            background: #fff2f0;
+            border-left-color: #ff4d4f;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 10px;
+            background: #fff7e6;
+            border: 1px solid #faad14;
+            border-radius: 4px;
+        }
+        .tips {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #8c8c8c;
+        }
+    </style>
+</head>
+<body>
+    <h1>认证信息测试工具</h1>
+    <div class="container">
+        <p>此工具帮助您快速设置测试用的认证信息到 localStorage，以便访问系统页面。</p>
+        
+        <div class="role-selector">
+            <label for="userRole">选择用户角色：</label>
+            <select id="userRole">
+                <option value="admin">管理员 (admin)</option>
+                <option value="guest">访客 (guest)</option>
+            </select>
+        </div>
+        
+        <button id="setAuthBtn">设置认证信息</button>
+        <button id="clearAuthBtn">清除认证信息</button>
+        
+        <div class="status" id="statusMsg"></div>
+        
+        <div class="info">
+            <h3>使用说明：</h3>
+            <ol>
+                <li>选择您需要的用户角色</li>
+                <li>点击"设置认证信息"按钮</li>
+                <li>刷新应用页面，即可查看效果</li>
+                <li>如需清除认证信息，点击"清除认证信息"按钮</li>
+            </ol>
+        </div>
+        
+        <div class="tips">
+            <p><strong>注意：</strong>此工具仅用于开发测试环境，生产环境请使用正式的登录接口获取认证信息。</p>
+        </div>
+    </div>
+    
+    <script>
+        const userRoleSelect = document.getElementById('userRole');
+        const setAuthBtn = document.getElementById('setAuthBtn');
+        const clearAuthBtn = document.getElementById('clearAuthBtn');
+        const statusMsg = document.getElementById('statusMsg');
+        
+        // 显示状态消息
+        const showStatus = (message, type = 'info') => {
+            statusMsg.textContent = message;
+            statusMsg.className = 'status ' + type;
+            statusMsg.style.display = 'block';
+            
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                statusMsg.style.display = 'none';
+            }, 5000);
+        };
+        
+        // 设置认证信息
+        setAuthBtn.addEventListener('click', () => {
+            try {
+                const role = userRoleSelect.value;
+                const username = role === 'admin' ? 'admin' : 'guest';
+                
+                // 创建用户信息对象
+                const userInfo = {
+                    username: username,
+                    role: role,
+                    id: 1
+                };
+                
+                // 设置到localStorage
+                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                // 为了兼容性，同时设置一个模拟的token
+                localStorage.setItem('token', 'mock-token-for-testing-' + Date.now());
+                
+                showStatus(`已成功设置${role === 'admin' ? '管理员' : '访客'}角色的认证信息`, 'success');
+            } catch (error) {
+                showStatus('设置认证信息失败: ' + error.message, 'error');
+            }
+        });
+        
+        // 清除认证信息
+        clearAuthBtn.addEventListener('click', () => {
+            try {
+                localStorage.removeItem('userInfo');
+                localStorage.removeItem('token');
+                showStatus('已成功清除认证信息', 'success');
+            } catch (error) {
+                showStatus('清除认证信息失败: ' + error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
