@@ -16,7 +16,7 @@ import {
   RadarChart,
   TreemapChart
 } from 'echarts/charts'
-import { VueECharts } from 'vue-echarts'
+import VueECharts from 'vue-echarts'
 
 use([
   CanvasRenderer,
