@@ -292,7 +292,7 @@ import { ArrowLeft, DataBoard, Clock } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { bigScreenAPI } from '@/api/api'
 import { useRouter } from 'vue-router'
-import { useTabAutoplay } from '@/hooks/useTabAutoplay'
+import { useTabAutoplay } from '@/hooks/useTabAutoplay.ts'
 import {
   screenGradients,
   gridTokens,
