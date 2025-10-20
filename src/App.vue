@@ -232,10 +232,9 @@ const handleRouteBeforeUpdate = () => {
   }
 }
 
-// 监听路由变化开始
-router.beforeEach((to, from, next) => {
+// 监听路由变化
+router.afterEach((to, from) => {
   handleRouteBeforeUpdate()
-  next()
 })
 
 // 过渡动画钩子函数（已移除，在Home.vue中处理）

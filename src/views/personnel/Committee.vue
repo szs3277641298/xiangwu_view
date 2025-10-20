@@ -67,14 +67,6 @@
                     class="form-input"
                   />
                 </el-form-item>
-                <el-form-item label="身份证号">
-                  <el-input
-                    v-model="searchForm.idCard"
-                    placeholder="请输入身份证号"
-                    clearable
-                    style="width: 180px"
-                  />
-                </el-form-item>
                 <el-form-item label="性别">
                   <el-select v-model="searchForm.genderId" placeholder="请选择" clearable style="width: 100px">
                     <el-option 
@@ -130,11 +122,19 @@
                 </el-form-item>
                 <el-form-item label="入职时间">
                   <el-date-picker
-                    v-model="searchForm.entryDate"
+                    v-model="searchForm.entryDateStart"
                     type="date"
-                    placeholder="请选择入职时间"
+                    placeholder="开始时间"
                     clearable
-                    style="width: 180px"
+                    style="width: 120px"
+                  />
+                  <span style="margin: 0 8px">-</span>
+                  <el-date-picker
+                    v-model="searchForm.entryDateEnd"
+                    type="date"
+                    placeholder="结束时间"
+                    clearable
+                    style="width: 120px"
                   />
                 </el-form-item>
               </div>
@@ -473,6 +473,13 @@
       </template>
     </el-dialog>
 
+    <!-- 导入结果详情对话框 -->
+    <ImportResultDialog
+      v-model="importResultDialogVisible"
+      :result-data="importResultData"
+      @refresh="loadCommitteeData"
+    />
+
     <!-- 导出数据对话框 -->
     <el-dialog
       v-model="exportDialogVisible"
@@ -679,10 +686,12 @@ import {
   getCommitteeDutyLabel
 } from '../../utils/constants.js'
 import CommitteeForm from './CommitteeForm.vue'
+import ImportResultDialog from '@/components/ImportResultDialog.vue'
 
 // 用户权限
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.isAdmin)
+
 
 // 搜索展开状态
 const searchExpanded = ref(false)
@@ -706,6 +715,8 @@ const importDialogVisible = ref(false)
 const importLoading = ref(false)
 const uploadRef = ref(null)
 const selectedFile = ref(null)
+const importResultDialogVisible = ref(false)
+const importResultData = ref({})
 
 // 导出相关
 const exportDialogVisible = ref(false)
@@ -737,13 +748,13 @@ const editData = ref(null)
 // 搜索表单
 const searchForm = reactive({
   name: '',
-  idCard: '',
   dutyId: null,
   genderId: null,
   minAge: null,
   maxAge: null,
   responsibility: '',
-  entryDate: null
+  entryDateStart: null,
+  entryDateEnd: null
 })
 
 // 数据相关
@@ -886,8 +897,6 @@ const toggleSearchExpanded = () => {
 
 // 获取照片URL
 // 图片缓存
-const imageCache = new Map()
-
 // 获取图片完整URL（带token认证）
 const getPhotoUrl = async (photoPath) => {
   if (!photoPath || typeof photoPath !== 'string') {
@@ -897,11 +906,6 @@ const getPhotoUrl = async (photoPath) => {
   // 如果已经是完整URL，直接返回
   if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
     return photoPath
-  }
-
-  // 检查缓存
-  if (imageCache.has(photoPath)) {
-    return imageCache.get(photoPath)
   }
 
   try {
@@ -917,9 +921,6 @@ const getPhotoUrl = async (photoPath) => {
     // 由于响应拦截器返回了response.data，所以response就是blob数据
     const blob = new Blob([response])
     const blobUrl = URL.createObjectURL(blob)
-    
-    // 缓存blob URL
-    imageCache.set(photoPath, blobUrl)
     
     return blobUrl
   } catch (error) {
@@ -945,19 +946,7 @@ const formatDate = (dateString) => {
   if (!dateString) return '未填写'
   
   try {
-    // 处理 LocalDateTime 格式 (yyyy-MM-dd HH:mm:ss)
-    if (typeof dateString === 'string' && dateString.includes(' ')) {
-      const datePart = dateString.split(' ')[0] // 取日期部分
-      const date = new Date(datePart)
-      if (isNaN(date.getTime())) return '日期格式错误'
-      return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      })
-    }
-    
-    // 处理时间戳格式
+    // 处理 LocalDate 格式 (yyyy-MM-dd)
     const date = new Date(typeof dateString === 'number' ? dateString : dateString)
     if (isNaN(date.getTime())) return '日期格式错误'
     return date.toLocaleDateString('zh-CN', {
@@ -987,13 +976,13 @@ const handleSearch = () => {
 const handleReset = () => {
   Object.assign(searchForm, {
     name: '',
-    idCard: '',
     dutyId: null,
     genderId: null,
     minAge: null,
     maxAge: null,
     responsibility: '',
-    entryDate: null
+    entryDateStart: null,
+    entryDateEnd: null
   })
   handleSearch()
 }
@@ -1013,13 +1002,13 @@ const loadCommitteeData = async () => {
 
     // 只添加非空值到请求数据中
     if (searchForm.name) requestData.name = searchForm.name
-    if (searchForm.idCard) requestData.idCard = searchForm.idCard
     if (searchForm.dutyId) requestData.dutyId = searchForm.dutyId
     if (searchForm.genderId) requestData.genderId = searchForm.genderId
     if (searchForm.minAge !== null) requestData.minAge = searchForm.minAge
     if (searchForm.maxAge !== null) requestData.maxAge = searchForm.maxAge
     if (searchForm.responsibility) requestData.responsibility = searchForm.responsibility
-    if (searchForm.entryDate) requestData.entryDate = searchForm.entryDate
+    if (searchForm.entryDateStart) requestData.entryDateStart = searchForm.entryDateStart
+    if (searchForm.entryDateEnd) requestData.entryDateEnd = searchForm.entryDateEnd
 
     const response = await committeeAPI.getCommitteeList(requestData)
 
@@ -1184,12 +1173,21 @@ const handleImport = async () => {
   try {
     const response = await committeeAPI.importCommittee(selectedFile.value)
     if (response.code === 200) {
-      ElMessage.success(response.message || '导入成功')
+      // 解析导入结果
+      importResultData.value = response
+      
+      // 关闭导入对话框
       importDialogVisible.value = false
       selectedFile.value = null
       uploadRef.value?.clearFiles()
-      // 刷新数据
-      loadCommitteeData()
+      
+      // 显示导入结果详情对话框
+      importResultDialogVisible.value = true
+      
+      // 如果有成功导入的数据，刷新列表
+      if (response.success > 0) {
+        loadCommitteeData()
+      }
     } else {
       ElMessage.error(response.message || '导入失败')
     }
@@ -1411,7 +1409,8 @@ const handleConfirmTemplateExport = async () => {
       minAge: null,
       maxAge: null,
       responsibility: '',
-      entryDate: null,
+      entryDateStart: null,
+      entryDateEnd: null,
       pageNum: 1,
       pageSize: 10000 // 导出所有数据
     }
@@ -1474,7 +1473,8 @@ const handleConfirmExport = async () => {
       minAge: searchForm.minAge || null,
       maxAge: searchForm.maxAge || null,
       responsibility: searchForm.responsibility || '',
-      entryDate: searchForm.entryDate || null,
+      entryDateStart: searchForm.entryDateStart || null,
+      entryDateEnd: searchForm.entryDateEnd || null,
       pageNum: 1,
       pageSize: 10000 // 导出所有数据
     }
@@ -1513,8 +1513,12 @@ const handleConfirmGenerateTemplate = async () => {
   try {
     exportLoading.value = true
     
-    // 生成完整路径，文件名固定为"村委会信息导入模板.xlsx"
-    const fullPath = `${generateTemplateForm.directory}/村委会信息导入模板.xlsx`
+    // 生成时间戳
+    const now = new Date()
+    const timestamp = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_')
+    
+    // 生成完整路径，文件名包含时间戳
+    const fullPath = `${generateTemplateForm.directory}/村委会信息导入模板_${timestamp}.xlsx`
     
     // 构建请求参数，只需要保存路径
     const request = {

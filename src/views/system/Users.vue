@@ -86,21 +86,9 @@
       <!-- 表格头部工具栏 -->
       <div class="table-header">
         <div class="table-actions">
-          <el-button type="success" v-if="isAdmin" @click="handleBatchImport">
-            <el-icon><Upload /></el-icon>
-            批量导入
-          </el-button>
           <el-button type="primary" v-if="isAdmin" @click="handleAddUser">
             <el-icon><Plus /></el-icon>
             新增用户
-          </el-button>
-          <el-button type="warning" @click="handleExport">
-            <el-icon><Download /></el-icon>
-            导出数据
-          </el-button>
-          <el-button type="info" @click="handleGenerateTemplate">
-            <el-icon><Document /></el-icon>
-            生成模板
           </el-button>
         </div>
       </div>
@@ -108,6 +96,11 @@
       <el-table v-loading="loading" :data="usersData" style="width: 100%" table-layout="auto">
         <el-table-column prop="id" label="用户ID" width="80" />
         <el-table-column prop="username" label="用户名" min-width="150" />
+        <el-table-column prop="phone" label="手机号" min-width="120">
+          <template #default="{ row }">
+            {{ row.phone || '未设置' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="role" label="角色" width="100">
           <template #default="{ row }">
             <el-tag :type="getRoleTagType(row.role)">
@@ -130,13 +123,10 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEditUser(row)">
               编辑
-            </el-button>
-            <el-button link type="primary" @click="handleResetPassword(row)">
-              重置密码
             </el-button>
             <el-button link type="danger" @click="handleDeleteUser(row)" v-if="!isCurrentUser(row.id)">
               删除
@@ -187,6 +177,13 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 导入结果详情对话框 -->
+    <ImportResultDialog
+      v-model="importResultDialogVisible"
+      :result-data="importResultData"
+      @refresh="loadUserList"
+    />
 
     <!-- 导出数据对话框 -->
     <el-dialog
@@ -370,24 +367,6 @@
       </template>
     </el-dialog>
     
-    <!-- 重置密码对话框 -->
-    <el-dialog v-model="resetPasswordVisible" title="重置密码" width="400px">
-      <el-form ref="resetPasswordFormRef" :model="resetPasswordForm" :rules="resetPasswordRules" label-width="100px">
-        <el-form-item label="新密码" prop="newPassword">
-          <el-input v-model="resetPasswordForm.newPassword" type="password" placeholder="请输入新密码" />
-          <div class="form-tip">密码长度至少8位，包含字母和数字</div>
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirmNewPassword">
-          <el-input v-model="resetPasswordForm.confirmNewPassword" type="password" placeholder="请再次输入新密码" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="resetPasswordVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleResetPasswordSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
     
     <!-- 批量创建访客账号对话框 -->
     <el-dialog v-model="batchCreateVisible" title="批量创建访客账号" width="600px">
@@ -453,6 +432,7 @@ import { Search, Plus, User, Download, Refresh, ArrowDown, UserFilled, Lock, Inf
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../store/index.js'
 import { userAPI, authAPI } from '../../api/api.js'
+import ImportResultDialog from '@/components/ImportResultDialog.vue'
 
 // 用户状态
 const userStore = useUserStore()
@@ -489,13 +469,15 @@ const importDialogVisible = ref(false)
 const importLoading = ref(false)
 const selectedFile = ref(null)
 const uploadRef = ref(null)
+const importResultDialogVisible = ref(false)
+const importResultData = ref({})
 
 // 导出相关
 const exportDialogVisible = ref(false)
 const exportLoading = ref(false)
 const exportForm = reactive({
   format: 'excel',
-  fields: ['id', 'username', 'role', 'createTime', 'status']
+  fields: ['id', 'username', 'phone', 'role', 'createTime', 'status']
 })
 
 // 生成模板相关
@@ -523,13 +505,11 @@ const mockUsersData = [
 
 // 对话框相关
 const dialogVisible = ref(false)
-const resetPasswordVisible = ref(false)
 const batchCreateVisible = ref(false)
 const batchResultVisible = ref(false)
 const isEdit = ref(false)
 const selectedUserId = ref(null)
 const formRef = ref(null)
-const resetPasswordFormRef = ref(null)
 const batchCreateFormRef = ref(null)
 
 // 表单数据
@@ -541,10 +521,6 @@ const formData = reactive({
   phone: ''
 })
 
-const resetPasswordForm = reactive({
-  newPassword: '',
-  confirmNewPassword: ''
-})
 
 const batchCreateForm = reactive({
   count: 10,
@@ -576,23 +552,6 @@ const formRules = {
   ]
 }
 
-const resetPasswordRules = {
-  newPassword: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 8, message: '密码长度至少为 8 个字符', trigger: 'blur' },
-    { pattern: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/, message: '密码必须包含字母和数字', trigger: 'blur' }
-  ],
-  confirmNewPassword: [
-    { required: true, message: '请再次输入新密码', trigger: 'blur' },
-    { validator: (rule, value, callback) => {
-      if (value !== resetPasswordForm.newPassword) {
-        callback(new Error('两次输入的密码不一致'))
-      } else {
-        callback()
-      }
-    }, trigger: 'blur' }
-  ]
-}
 
 const batchCreateRules = {
   count: [
@@ -703,12 +662,33 @@ const handleImport = async () => {
     // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 2000))
     
-    ElMessage.success('导入成功')
+    // 模拟导入结果数据
+    const mockResult = {
+      code: 200,
+      success: true,
+      message: '部分数据导入成功',
+      total: 10,
+      success: 7,
+      skipped: 2,
+      failed: 1,
+      errorMsg: '导入完成：总计10条，成功7条，跳过2条，失败1条；第3行：用户名已存在，跳过导入；第8行：邮箱格式不正确；第9行：密码不能为空'
+    }
+    
+    // 解析导入结果
+    importResultData.value = mockResult
+    
+    // 关闭导入对话框
     importDialogVisible.value = false
     selectedFile.value = null
     uploadRef.value?.clearFiles()
-    // 刷新数据
-    loadUserList()
+    
+    // 显示导入结果详情对话框
+    importResultDialogVisible.value = true
+    
+    // 如果有成功导入的数据，刷新列表
+    if (mockResult.success > 0) {
+      loadUserList()
+    }
   } catch (error) {
     console.error('导入失败:', error)
     ElMessage.error('导入失败，请稍后重试')
@@ -898,28 +878,6 @@ const handleSubmit = async () => {
   }
 }
 
-// 重置密码
-const handleResetPassword = (row) => {
-  selectedUserId.value = row.id
-  resetPasswordForm.newPassword = ''
-  resetPasswordForm.confirmNewPassword = ''
-  resetPasswordVisible.value = true
-}
-
-// 提交重置密码
-const handleResetPasswordSubmit = async () => {
-  try {
-    // 表单验证
-    await resetPasswordFormRef.value.validate()
-    
-    // 模拟提交数据
-    ElMessage.success('密码重置成功')
-    resetPasswordVisible.value = false
-  } catch (error) {
-    // 表单验证失败
-    console.error('表单验证失败:', error)
-  }
-}
 
 // 删除用户
 const handleDeleteUser = (row) => {
@@ -1102,6 +1060,7 @@ const loadUserList = async () => {
       const apiUsers = response.data.list.map(user => ({
         id: user.id,
         username: user.username,
+        phone: user.phone || '', // 添加phone字段
         role: user.role, // 保持原始角色ID
         createTime: user.createTime, // 保持原始时间戳
         status: user.status === 1 ? 'active' : 'inactive' // 1=启用, 0=禁用

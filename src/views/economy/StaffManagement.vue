@@ -1,12 +1,5 @@
 <template>
   <div class="staff-management-container">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <div class="page-title">
-        <h2>项目人员管理</h2>
-        <p class="page-subtitle">管理各项目的人员配置</p>
-      </div>
-    </div>
 
     <!-- 搜索筛选区域 -->
     <el-card class="filter-card" shadow="never">
@@ -53,124 +46,81 @@
         </el-form>
       </div>
 
-      <!-- 高级搜索 -->
+      <!-- 详细搜索区域（可折叠） -->
       <el-collapse-transition>
-        <div v-show="searchExpanded" class="advanced-search">
-          <el-form :model="searchForm" class="advanced-search-form">
-            <div class="form-row">
-              <el-form-item label="项目类型">
-                <el-select v-model="searchForm.typeId" placeholder="请选择项目类型" clearable>
-                  <el-option 
-                    v-for="option in projectTypeOptions" 
-                    :key="option.id" 
-                    :label="option.name" 
-                    :value="option.id" 
+        <div v-show="searchExpanded" class="detailed-search">
+          <el-form :model="searchForm" class="filter-form">
+            <!-- 基本信息 -->
+            <div class="filter-section">
+              <div class="section-title">
+                <el-icon><Briefcase /></el-icon>
+                <span>项目信息</span>
+              </div>
+              <div class="form-grid">
+                <el-form-item label="项目名称">
+                  <el-input
+                    v-model="searchForm.objectName"
+                    placeholder="请输入项目名称"
+                    clearable
+                    class="form-input"
                   />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="项目状态">
-                <el-select v-model="searchForm.statusId" placeholder="请选择项目状态" clearable>
-                  <el-option 
-                    v-for="option in projectStatusOptions" 
-                    :key="option.id" 
-                    :label="option.name" 
-                    :value="option.id" 
+                </el-form-item>
+                <el-form-item label="负责人">
+                  <el-input
+                    v-model="searchForm.managerName"
+                    placeholder="请输入负责人姓名"
+                    clearable
+                    class="form-input"
                   />
-                </el-select>
-              </el-form-item>
+                </el-form-item>
+                <el-form-item label="项目类型">
+                  <el-select v-model="searchForm.typeId" placeholder="请选择项目类型" clearable class="form-select">
+                    <el-option 
+                      v-for="option in projectTypeOptions" 
+                      :key="option.id" 
+                      :label="option.name" 
+                      :value="option.id" 
+                    />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="项目状态">
+                  <el-select v-model="searchForm.statusId" placeholder="请选择项目状态" clearable class="form-select">
+                    <el-option 
+                      v-for="option in projectStatusOptions" 
+                      :key="option.id" 
+                      :label="option.name" 
+                      :value="option.id" 
+                    />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="项目地址">
+                  <el-input
+                    v-model="searchForm.address"
+                    placeholder="请输入项目地址"
+                    clearable
+                    class="form-input"
+                  />
+                </el-form-item>
+              </div>
             </div>
-            <div class="form-row">
-              <el-form-item label="投资金额范围">
-                <el-input
-                  v-model.number="searchForm.minInvestment"
-                  placeholder="最小投资"
-                  type="number"
-                  class="form-input"
-                >
-                  <template #prefix>¥</template>
-                </el-input>
-                <span class="range-separator">-</span>
-                <el-input
-                  v-model.number="searchForm.maxInvestment"
-                  placeholder="最大投资"
-                  type="number"
-                  class="form-input"
-                >
-                  <template #prefix>¥</template>
-                </el-input>
-              </el-form-item>
-              <el-form-item label="年收入范围">
-                <el-input
-                  v-model.number="searchForm.minAnnualRevenue"
-                  placeholder="最小年收入"
-                  type="number"
-                  class="form-input"
-                >
-                  <template #prefix>¥</template>
-                </el-input>
-                <span class="range-separator">-</span>
-                <el-input
-                  v-model.number="searchForm.maxAnnualRevenue"
-                  placeholder="最大年收入"
-                  type="number"
-                  class="form-input"
-                >
-                  <template #prefix>¥</template>
-                </el-input>
-              </el-form-item>
-            </div>
-            <div class="form-row">
-              <el-form-item label="项目地址">
-                <el-input v-model="searchForm.address" placeholder="请输入项目地址" clearable />
-              </el-form-item>
-              <el-form-item label="时间范围">
-                <el-date-picker
-                  v-model="searchForm.startDate"
-                  type="date"
-                  placeholder="开始日期"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  class="form-input"
-                />
-                <span class="range-separator">-</span>
-                <el-date-picker
-                  v-model="searchForm.endDate"
-                  type="date"
-                  placeholder="结束日期"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  class="form-input"
-                />
-              </el-form-item>
-            </div>
-            <div class="form-section">
+
+            <!-- 负责人信息 -->
+            <div class="filter-section">
               <div class="section-title">
                 <el-icon><User /></el-icon>
                 <span>负责人信息</span>
               </div>
-              <div class="form-row">
+              <div class="form-grid">
                 <el-form-item label="负责人姓名">
-                  <el-input v-model="searchForm.managerName" placeholder="请输入负责人姓名" clearable />
-                </el-form-item>
-                <el-form-item label="年龄范围">
                   <el-input
-                    v-model.number="searchForm.minAge"
-                    placeholder="最小年龄"
-                    type="number"
-                    class="form-input"
-                  />
-                  <span class="range-separator">-</span>
-                  <el-input
-                    v-model.number="searchForm.maxAge"
-                    placeholder="最大年龄"
-                    type="number"
+                    v-model="searchForm.managerName"
+                    placeholder="请输入负责人姓名"
+                    clearable
                     class="form-input"
                   />
                 </el-form-item>
-              </div>
-              <div class="form-row">
                 <el-form-item label="性别">
-                  <el-select v-model="searchForm.genderId" placeholder="请选择性别" clearable>
+                  <el-select v-model="searchForm.genderId" placeholder="请选择性别" clearable class="form-select">
                     <el-option 
                       v-for="option in genderOptions" 
                       :key="option.id" 
@@ -179,7 +129,124 @@
                     />
                   </el-select>
                 </el-form-item>
+                <el-form-item label="年龄范围">
+                  <div class="range-input-group">
+                    <el-input
+                      v-model="searchForm.minAge"
+                      placeholder="最小年龄"
+                      type="number"
+                      class="range-input"
+                    />
+                    <span class="range-separator">-</span>
+                    <el-input
+                      v-model="searchForm.maxAge"
+                      placeholder="最大年龄"
+                      type="number"
+                      class="range-input"
+                    />
+                  </div>
+                </el-form-item>
               </div>
+            </div>
+
+            <!-- 财务信息 -->
+            <div class="filter-section">
+              <div class="section-title">
+                <el-icon><Money /></el-icon>
+                <span>财务信息</span>
+              </div>
+              <div class="form-grid">
+                <el-form-item label="投资金额">
+                  <div class="range-input-group">
+                    <el-input
+                      v-model="searchForm.minInvestment"
+                      placeholder="最小金额"
+                      type="number"
+                      class="range-input"
+                    />
+                    <span class="range-separator">-</span>
+                    <el-input
+                      v-model="searchForm.maxInvestment"
+                      placeholder="最大金额"
+                      type="number"
+                      class="range-input"
+                    />
+                  </div>
+                </el-form-item>
+                <el-form-item label="年收入">
+                  <div class="range-input-group">
+                    <el-input
+                      v-model="searchForm.minAnnualRevenue"
+                      placeholder="最小收入"
+                      type="number"
+                      class="range-input"
+                    />
+                    <span class="range-separator">-</span>
+                    <el-input
+                      v-model="searchForm.maxAnnualRevenue"
+                      placeholder="最大收入"
+                      type="number"
+                      class="range-input"
+                    />
+                  </div>
+                </el-form-item>
+              </div>
+            </div>
+
+            <!-- 时间信息 -->
+            <div class="filter-section">
+              <div class="section-title">
+                <el-icon><Calendar /></el-icon>
+                <span>时间信息</span>
+              </div>
+              <div class="form-grid">
+                <el-form-item label="开始时间">
+                  <el-date-picker
+                    v-model="searchForm.startDateStart"
+                    type="date"
+                    placeholder="开始时间范围-开始"
+                    clearable
+                    class="form-date-picker"
+                  />
+                  <span style="margin: 0 8px">-</span>
+                  <el-date-picker
+                    v-model="searchForm.startDateEnd"
+                    type="date"
+                    placeholder="开始时间范围-结束"
+                    clearable
+                    class="form-date-picker"
+                  />
+                </el-form-item>
+                <el-form-item label="结束时间">
+                  <el-date-picker
+                    v-model="searchForm.endDateStart"
+                    type="date"
+                    placeholder="结束时间范围-开始"
+                    clearable
+                    class="form-date-picker"
+                  />
+                  <span style="margin: 0 8px">-</span>
+                  <el-date-picker
+                    v-model="searchForm.endDateEnd"
+                    type="date"
+                    placeholder="结束时间范围-结束"
+                    clearable
+                    class="form-date-picker"
+                  />
+                </el-form-item>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="filter-actions">
+              <el-button type="primary" @click="handleAdvancedSearch" class="search-btn">
+                <el-icon><Search /></el-icon>
+                搜索
+              </el-button>
+              <el-button @click="handleReset" class="reset-btn">
+                <el-icon><Refresh /></el-icon>
+                重置
+              </el-button>
             </div>
           </el-form>
         </div>
@@ -284,19 +351,21 @@ const pageSize = ref(20)
 // 搜索表单
 const searchForm = reactive({
   objectName: '',
-  typeId: null,              // 项目类型（Integer，字典ID）
-  statusId: null,            // 项目状态（Integer，字典ID）
+  typeId: null,
+  statusId: null,
+  managerName: '',
+  address: '',
   minInvestment: '',
   maxInvestment: '',
   minAnnualRevenue: '',
   maxAnnualRevenue: '',
-  address: '',
-  startDate: '',
-  endDate: '',
-  managerName: '',
+  startDateStart: null,
+  startDateEnd: null,
+  endDateStart: null,
+  endDateEnd: null,
   minAge: '',
   maxAge: '',
-  genderId: null             // 性别（Integer，字典ID）
+  genderId: null
 })
 
 // 字典类型和字典数据
@@ -444,6 +513,7 @@ const loadFallbackData = () => {
       { id: 30, name: '女' }
     ]
   }
+  
   console.log('备用数据加载完成')
 }
 
@@ -459,22 +529,35 @@ const handleSearch = async () => {
   await loadProjectsData()
 }
 
+const handleAdvancedSearch = () => {
+  currentPage.value = 1
+  loadProjectsData()
+}
+
 const handleReset = () => {
-  Object.keys(searchForm).forEach(key => {
-    // 字符串字段设为空字符串，枚举ID字段设为null，数字字段设为空字符串
-    if (key === 'objectName' || key === 'address' || key === 'managerName' || 
-        key === 'minInvestment' || key === 'maxInvestment' || 
-        key === 'minAnnualRevenue' || key === 'maxAnnualRevenue' ||
-        key === 'startDate' || key === 'endDate' || key === 'minAge' || key === 'maxAge') {
-      searchForm[key] = ''
-    } else {
-      searchForm[key] = null
-    }
+  Object.assign(searchForm, {
+    objectName: '',
+    typeId: null,
+    statusId: null,
+    managerName: '',
+    address: '',
+    minInvestment: '',
+    maxInvestment: '',
+    minAnnualRevenue: '',
+    maxAnnualRevenue: '',
+    startDateStart: null,
+    startDateEnd: null,
+    endDateStart: null,
+    endDateEnd: null,
+    minAge: '',
+    maxAge: '',
+    genderId: null
   })
   handleSearch()
 }
 
 const loadProjectsData = async () => {
+  console.log('=== 开始加载项目数据 ===')
   loading.value = true
   try {
     const queryData = {
@@ -482,12 +565,17 @@ const loadProjectsData = async () => {
       pageSize: pageSize.value,
       ...cleanSearchForm(searchForm)
     }
+    console.log('请求参数:', queryData)
+    console.log('调用API: economyAPI.getEconomyList')
     const response = await economyAPI.getEconomyList(queryData)
+    console.log('API响应:', response)
     
     if (response.code === 200) {
       projectsData.value = response.data.list || []
       total.value = response.data.total || 0
+      console.log('项目数据加载成功，共', projectsData.value.length, '条')
     } else {
+      console.error('API返回错误:', response.message)
       ElMessage.error(response.message || '获取项目列表失败')
     }
   } catch (error) {
@@ -495,6 +583,7 @@ const loadProjectsData = async () => {
     ElMessage.error('加载项目数据失败')
   } finally {
     loading.value = false
+    console.log('=== 项目数据加载完成 ===')
   }
 }
 
@@ -544,10 +633,15 @@ const getStatusType = (statusId) => {
 
 // 组件挂载时加载数据
 onMounted(async () => {
+  console.log('=== 项目人员管理页面开始初始化 ===')
   // 先加载字典数据
+  console.log('开始加载字典数据...')
   await loadAllDictData()
+  console.log('字典数据加载完成')
   // 再加载项目数据
+  console.log('开始加载项目数据...')
   await loadProjectsData()
+  console.log('=== 项目人员管理页面初始化完成 ===')
 })
 </script>
 
@@ -626,6 +720,15 @@ onMounted(async () => {
   min-width: 80px;
 }
 
+.filter-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
 .advanced-search {
   border-top: 1px solid #f0f0f0;
   padding-top: 16px;
@@ -635,38 +738,53 @@ onMounted(async () => {
   margin: 0;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
+.filter-form {
+  margin: 0;
 }
 
-.form-input {
-  width: 100%;
-}
-
-.range-separator {
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  color: #909399;
-}
-
-.form-section {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #f0f0f0;
+.filter-section {
+  margin-bottom: 24px;
 }
 
 .section-title {
   display: flex;
   align-items: center;
-  gap: 8px;
   margin-bottom: 16px;
-  font-weight: 500;
-  color: #303133;
   font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.section-title .el-icon {
+  margin-right: 8px;
+  color: #409eff;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.form-input,
+.form-select,
+.form-date-picker {
+  width: 100%;
+}
+
+.range-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-input {
+  flex: 1;
+}
+
+.range-separator {
+  color: #909399;
+  font-weight: 500;
 }
 
 .projects-grid {

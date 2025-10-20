@@ -217,9 +217,9 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="MonthlySalary" label="月薪资" width="100">
+        <el-table-column prop="monthlySalary" label="月薪资" width="100">
           <template #default="{ row }">
-            <span v-if="row.MonthlySalary && row.MonthlySalary > 0">¥{{ Number(row.MonthlySalary).toLocaleString() }}</span>
+            <span v-if="row.monthlySalary && row.monthlySalary > 0">¥{{ Number(row.monthlySalary).toLocaleString() }}</span>
             <span v-else class="text-muted">未设置</span>
           </template>
         </el-table-column>
@@ -355,9 +355,9 @@
           </el-select>
         </el-form-item>
         
-        <el-form-item label="月薪资" prop="MonthlySalary">
+        <el-form-item label="月薪资" prop="monthlySalary">
           <el-input 
-            v-model.number="formData.MonthlySalary" 
+            v-model.number="formData.monthlySalary" 
             placeholder="请输入月薪资"
             type="number"
           >
@@ -453,6 +453,7 @@ import api from '../../api/api.js'
 const route = useRoute()
 const router = useRouter()
 
+
 // 响应式数据
 const loading = ref(false)
 const searchExpanded = ref(false)
@@ -460,9 +461,6 @@ const staffData = ref([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
-
-// 图片缓存
-const imageCache = new Map()
 
 // 获取图片完整URL（带token认证）
 const getPhotoUrl = async (photoPath) => {
@@ -473,11 +471,6 @@ const getPhotoUrl = async (photoPath) => {
   // 如果已经是完整URL，直接返回
   if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
     return photoPath
-  }
-
-  // 检查缓存
-  if (imageCache.has(photoPath)) {
-    return imageCache.get(photoPath)
   }
 
   try {
@@ -493,9 +486,6 @@ const getPhotoUrl = async (photoPath) => {
     // 由于响应拦截器返回了response.data，所以response就是blob数据
     const blob = new Blob([response])
     const blobUrl = URL.createObjectURL(blob)
-    
-    // 缓存blob URL
-    imageCache.set(photoPath, blobUrl)
     
     return blobUrl
   } catch (error) {
@@ -528,16 +518,16 @@ const searchForm = reactive({
 
 // 表单数据
 const formData = reactive({
-  id: null,
-  projectId: projectId.value,
-  residentId: null,
-  position: '',
-  responsibility: '',
-  joinDate: '',
-  leaveDate: '',
-  workStatusId: null,
-  MonthlySalary: null,
-  performanceEvaluation: ''
+  id: null,                    // Long - ID
+  projectId: projectId.value,  // Long - 项目ID
+  residentId: null,            // Long - 居民ID
+  position: '',                // String - 职位
+  responsibility: '',          // String - 职责
+  joinDate: null,              // LocalDate - 入职时间
+  leaveDate: null,             // LocalDate - 离职时间
+  workStatusId: null,          // Integer - 工作状态ID
+  monthlySalary: 0,            // BigDecimal - 月薪
+  performanceEvaluation: ''    // String - 绩效评价
 })
 
 // 村民搜索相关
@@ -939,7 +929,7 @@ const handleEditStaff = async (row) => {
     joinDate: formattedJoinDate,
     leaveDate: formattedLeaveDate,
     workStatusId: row.workStatusId,
-    MonthlySalary: row.MonthlySalary,
+    monthlySalary: row.monthlySalary || 0,
     performanceEvaluation: row.performanceEvaluation
   })
   
@@ -1012,15 +1002,27 @@ const handleSubmit = async () => {
       residentId: Number(formData.residentId),
       position: formData.position,
       responsibility: formData.responsibility,
-      joinDate: formData.joinDate,
       workStatusId: formData.workStatusId,
-      monthlySalary: formData.MonthlySalary ? Number(formData.MonthlySalary) : null,
+      monthlySalary: formData.monthlySalary ? Number(formData.monthlySalary) : null,
       performanceEvaluation: formData.performanceEvaluation
     }
-    
+
+    // 处理日期字段 - 只保留日期部分（LocalDate类型）
+    if (formData.joinDate) {
+      const date = new Date(formData.joinDate)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      submitData.joinDate = `${year}-${month}-${day}`
+    }
+
     // 编辑时才包含离职时间
-    if (isEdit.value) {
-      submitData.leaveDate = formData.leaveDate
+    if (isEdit.value && formData.leaveDate) {
+      const date = new Date(formData.leaveDate)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      submitData.leaveDate = `${year}-${month}-${day}`
     }
     
     // 编辑时需要包含id

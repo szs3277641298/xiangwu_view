@@ -85,22 +85,35 @@
                       <span class="label-text">{{ data.dictLabel }}</span>
                       <span class="label-value">{{ data.dictValue }}</span>
                     </div>
+                    <div class="data-status">
+                      <el-tag
+                        :type="data.isChanged === 1 ? 'success' : 'danger'"
+                        size="small"
+                        class="status-tag"
+                      >
+                        {{ data.isChanged === 1 ? '可修改' : '不可修改' }}
+                      </el-tag>
+                    </div>
                     <p class="data-remark" v-if="data.remark">{{ data.remark }}</p>
                   </div>
                   <div class="data-actions">
-                    <el-button 
-                      type="text" 
-                      size="small" 
-                      @click="handleEditData(data)"
+                    <el-button
+                      type="text"
+                      size="small"
+                      @click.stop="handleEditData(data)"
+                      :disabled="data.isChanged === 0"
                       class="data-action-btn"
+                      :title="data.isChanged === 0 ? '不可修改的数据' : '编辑'"
                     >
                       <el-icon><Edit /></el-icon>
                       </el-button>
-                    <el-button 
-                      type="text" 
-                      size="small" 
-                      @click="handleDeleteData(data)"
+                    <el-button
+                      type="text"
+                      size="small"
+                      @click.stop="handleDeleteData(data)"
+                      :disabled="data.isChanged === 0"
                       class="data-action-btn danger"
+                      :title="data.isChanged === 0 ? '不可修改的数据' : '删除'"
                     >
                       <el-icon><Delete /></el-icon>
                       </el-button>
@@ -189,6 +202,19 @@
                   resize="none"
           />
         </el-form-item>
+              <el-form-item label="修改状态" class="form-item">
+                <div class="status-display">
+                  <el-tag
+                    :type="dataForm.isChanged === 1 ? 'success' : 'danger'"
+                    class="status-tag"
+                  >
+                    {{ dataForm.isChanged === 1 ? '可修改' : '不可修改' }}
+                  </el-tag>
+                  <span class="status-text">
+                    {{ dataForm.isChanged === 1 ? '该字典数据可以进行编辑和删除操作' : '该字典数据已被锁定，无法进行编辑和删除操作' }}
+                  </span>
+                </div>
+              </el-form-item>
             </div>
           </div>
       </el-form>
@@ -244,7 +270,8 @@ const dataForm = reactive({
   typeCode: '',
   dictLabel: '',
   dictValue: '',
-  remark: ''
+  remark: '',
+  isChanged: 1
 })
 
 // 表单验证规则
@@ -340,21 +367,28 @@ const handleEditData = (row) => {
   dataForm.dictLabel = row.dictLabel
   dataForm.dictValue = row.dictValue
   dataForm.remark = row.remark
+  dataForm.isChanged = row.isChanged || 1
   dataDialogVisible.value = true
 }
 
 // 删除字典数据
 const handleDeleteData = async (row) => {
   try {
+    // 检查是否为不可删除的数据
+    if (row.isChanged === 0) {
+      ElMessage.warning('该字典数据已被锁定，无法删除')
+      return
+    }
+
     await ElMessageBox.confirm('确定要删除这个字典数据吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
+
     const response = await dictAPI.deleteDictData(row.id)
     if (response.code === 200) {
-    ElMessage.success('删除成功')
+      ElMessage.success('删除成功')
       // 重新加载该类型的数据
       const type = dictTypeList.value.find(t => t.id === row.typeCode)
       if (type) {
@@ -377,14 +411,20 @@ const handleDeleteData = async (row) => {
 const handleDataSubmit = async () => {
   try {
     await dataFormRef.value.validate()
-    
-    const response = dataForm.id 
+
+    // 检查是否为不可修改的数据
+    if (dataForm.id && dataForm.isChanged === 0) {
+      ElMessage.warning('该字典数据已被锁定，无法修改')
+      return
+    }
+
+    const response = dataForm.id
       ? await dictAPI.updateDictData(dataForm)
       : await dictAPI.createDictData(dataForm)
-    
+
     if (response.code === 200) {
       ElMessage.success(dataForm.id ? '编辑成功' : '新增成功')
-    dataDialogVisible.value = false
+      dataDialogVisible.value = false
       // 重新加载该类型的数据
       const type = dictTypeList.value.find(t => t.typeCode === dataForm.typeCode)
       if (type) {
@@ -406,7 +446,8 @@ const resetDataForm = () => {
     typeCode: '',
     dictLabel: '',
     dictValue: '',
-    remark: ''
+    remark: '',
+    isChanged: 1
   })
   dataFormRef.value?.clearValidate()
 }
@@ -692,7 +733,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.data-status {
+  margin-bottom: 4px;
 }
 
 .label-text {
@@ -737,6 +782,16 @@ onMounted(() => {
 .data-action-btn.danger:hover {
   background: #f8f9fa;
   color: #dc3545;
+}
+
+.data-action-btn:disabled {
+  color: #adb5bd;
+  cursor: not-allowed;
+}
+
+.data-action-btn:disabled:hover {
+  background: transparent;
+  color: #adb5bd;
 }
 
 /* 空数据状态 */
@@ -904,6 +959,19 @@ onMounted(() => {
 :deep(.form-textarea .el-textarea__inner:focus) {
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+/* 状态显示区域样式 */
+.status-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-text {
+  font-size: 12px;
+  color: #6c757d;
+  line-height: 1.4;
 }
 
 /* 状态单选按钮样式 */

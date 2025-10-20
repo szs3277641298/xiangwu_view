@@ -5,6 +5,18 @@
       <h3>大屏维度配置</h3>
       <p>配置数据可视化大屏的显示维度和参数</p>
     </div>
+
+    <!-- 暂未开发提示遮罩层 -->
+    <div class="unavailable-overlay">
+      <div class="unavailable-content">
+        <div class="unavailable-icon">
+          <el-icon><Warning /></el-icon>
+        </div>
+        <div class="unavailable-title">页面暂无需求</div>
+        <div class="unavailable-subtitle">暂未开发</div>
+        <div class="unavailable-description">什么都不能点</div>
+      </div>
+    </div>
     
     <!-- 大屏模板选择 -->
     <el-card class="template-card">
@@ -226,6 +238,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Warning } from '@element-plus/icons-vue'
 
 // 大屏模板
 const screenTemplates = [
@@ -573,7 +586,14 @@ const getScreenPreviewStyle = () => {
   }
   
   if (screenConfig.backgroundImage) {
-    style.backgroundImage = `url(${screenConfig.backgroundImage})`
+    // 添加图片预加载
+    if (screenConfig.backgroundImage) {
+      const img = new Image()
+      img.onload = () => {
+        style.backgroundImage = `url(${screenConfig.backgroundImage})`
+      }
+      img.src = screenConfig.backgroundImage
+    }
     style.backgroundSize = 'cover'
     style.backgroundPosition = 'center'
   }
@@ -590,234 +610,146 @@ onMounted(() => {
 
 <style scoped>
 .screen-config-container {
-  height: 100%;
+  height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
 .page-subheader {
   margin-bottom: 10px;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .page-subheader h3 {
   margin: 0 0 8px 0;
   font-size: 20px;
   font-weight: 600;
+  color: #9ca3af;
 }
 
 .page-subheader p {
   margin: 0;
   font-size: 14px;
-  color: #909399;
+  color: #d1d5db;
 }
 
-.template-card,
-.config-card {
-  margin-bottom: 20px;
-}
-
-.card-header {
+/* 暂未开发提示遮罩层样式 */
+.unavailable-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.98);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.template-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.template-item {
-  cursor: pointer;
-  transition: all 0.3s;
-  border: 2px solid transparent;
-}
-
-.template-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08);
-}
-
-.template-item.active {
-  border-color: #1890ff;
-  box-shadow: 0 6px 16px 0 rgba(24, 144, 255, 0.2);
-}
-
-.template-preview {
-  height: 180px;
-  overflow: hidden;
-}
-
-.preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: all 0.3s;
-}
-
-.template-item:hover .preview-img {
-  transform: scale(1.05);
-}
-
-.template-info {
-  padding: 15px;
-}
-
-.template-info h4 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.template-info p {
-  margin: 0;
-  font-size: 14px;
-  color: #606266;
-}
-
-.el-form-item {
-  margin-bottom: 25px;
-}
-
-.form-row {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.form-row .el-form-item {
-  flex: 1;
-  min-width: 300px;
-  margin-bottom: 0;
-}
-
-.unit-label {
-  margin-left: 10px;
-  color: #606266;
-}
-
-.form-hint {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 8px;
-}
-
-.background-preview {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.background-preview .preview-img {
-  width: 200px;
-  height: 100px;
-  object-fit: cover;
-  border: 1px solid #ddd;
-}
-
-.charts-config {
-  margin-top: 20px;
-}
-
-.chart-config-item {
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  padding: 20px;
-  margin-bottom: 20px;
-  background-color: #f9f9f9;
-}
-
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.chart-header h4 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-start;
-  gap: 16px;
-  margin-top: 40px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.preview-content {
-  width: 100%;
-  height: calc(100vh - 200px);
-  overflow: hidden;
-}
-
-.screen-preview {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-  transition: all 0.3s;
+  z-index: 99999;
+  backdrop-filter: blur(3px);
+  overflow: hidden;
+  animation: none !important;
 }
 
-.screen-title {
-  font-size: 36px;
-  margin: 0 0 20px 0;
+.unavailable-content {
   text-align: center;
+  padding: 50px 40px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 2px solid #e5e7eb;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 90vw;
+  min-width: 320px;
+  animation: none !important;
 }
 
-.screen-subtitle {
+.unavailable-icon {
+  margin: 0 auto 24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  animation: none !important;
+}
+
+.unavailable-icon .el-icon {
+  font-size: 36px;
+  color: #d97706;
+  animation: none !important;
+}
+
+.unavailable-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.unavailable-subtitle {
   font-size: 18px;
-  margin: 0 0 40px 0;
+  color: #4b5563;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.unavailable-description {
+  font-size: 15px;
+  color: #6b7280;
+  font-style: italic;
   opacity: 0.8;
 }
 
-.preview-placeholder {
-  text-align: center;
-  font-size: 18px;
-  opacity: 0.6;
+/* 禁用所有按钮和交互元素 */
+.screen-config-container :deep(.el-button) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
 }
 
-.preview-placeholder p {
-  margin: 10px 0;
+.screen-config-container :deep(.el-select) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
 }
 
-/* 响应式布局 */
-@media (max-width: 768px) {
-  .template-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .form-row {
-    flex-direction: column;
-  }
-  
-  .form-row .el-form-item {
-    min-width: 100%;
-  }
-  
-  .form-actions {
-    flex-direction: column;
-  }
-  
-  .form-actions .el-button {
-    width: 100%;
-  }
-  
-  .chart-config-item {
-    padding: 15px;
-  }
+.screen-config-container :deep(.el-input) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
 }
+
+.screen-config-container :deep(.el-checkbox) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+}
+
+.screen-config-container :deep(.el-upload) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+}
+
+.screen-config-container :deep(.el-card) {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+}
+
+.screen-config-container :deep(.el-dialog) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+}
+
+/* 确保所有文本内容都可见但不可交互 */
+.screen-config-container :deep(*) {
+  user-select: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
 </style>

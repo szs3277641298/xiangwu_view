@@ -3,7 +3,7 @@
     <!-- 侧边栏头部 -->
     <div class="sidebar-header">
       <div class="logo-container">
-        <div class="logo">乡村治理系统</div>
+        <div class="logo">村级信息管理系统</div>
         <div class="logo-subtitle">村级综合管理平台</div>
       </div>
       <el-button
@@ -66,7 +66,7 @@
     <div class="sidebar-footer" v-if="!collapsed">
       <div class="footer-info">
         <div class="system-version">版本 v1.0.0</div>
-        <div class="copyright">© 2023 乡村治理系统</div>
+        <div class="copyright">© 2025 村级信息管理系统</div>
       </div>
     </div>
   </div>

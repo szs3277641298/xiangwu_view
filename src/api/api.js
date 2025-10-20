@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: 'http://localhost:8088/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8088/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -606,25 +606,51 @@ export const economyAPI = {
   getEconomyList: (data) => {
     return api.post('/economy/economylist', data)
   },
-  
+
   // 获取集体经济详情
   getEconomyInfo: (id) => {
     return api.get(`/economy/economyinfo?id=${id}`)
   },
-  
+
   // 新增集体经济项目
   addEconomy: (data) => {
     return api.post('/economy/addeconomy', data)
   },
-  
+
   // 更新集体经济项目
   updateEconomy: (data) => {
     return api.put('/economy/updateeconomy', data)
   },
-  
+
   // 删除集体经济项目
   deleteEconomy: (id) => {
     return api.delete(`/economy/deleteeconomy?id=${id}`)
+  },
+
+  // 获取排序后的集体经济列表
+  getEconomyListWithOrder: (orderField) => {
+    return api.get(`/economy/getlistwithorder?orderField=${orderField}`)
+  }
+}
+
+// 集体经济Excel相关API
+export const economyExcelAPI = {
+  // 生成集体经济导入模板
+  generateTemplate: (request) => {
+    return api.post('/economyexcel/generateTemplate', request, {
+      responseType: 'blob' // 设置响应类型为blob，用于文件下载
+    })
+  },
+
+  // 导入集体经济数据
+  importEconomy: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/economyexcel/importeconomy', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
   },
 
   // 导出集体经济数据到Excel
@@ -633,11 +659,6 @@ export const economyAPI = {
       exportRequest: exportRequest,
       queryRequest: queryRequest
     })
-  },
-
-  // 获取排序后的集体经济列表
-  getEconomyListWithOrder: (orderField) => {
-    return api.get(`/economy/getlistwithorder?orderField=${orderField}`)
   }
 }
 
@@ -676,7 +697,7 @@ export const economyTransactionAPI = {
   },
   // 更新收支明细
   updateEconomyTransaction: (data) => {
-    return api.patch('/economytransaction/updateeconomytransaction', data)
+    return api.put('/economytransaction/updateeconomytransaction', data)
   },
   // 删除收支明细
   deleteEconomyTransaction: (id) => {
@@ -700,53 +721,6 @@ export const economyTransactionAPI = {
   }
 }
 
-// 大屏数据API
-export const bigScreenAPI = {
-  // 获取人口数据（总人口、男女数量等）
-  getPopulationData: () => {
-    return api.get('/bigscreen/populationdata')
-  },
-  // 获取党建数据（党员数量等）
-  getPartyMemberData: () => {
-    return api.get('/bigscreen/partymemberdata')
-  },
-  // 获取人口结构数据（按年龄）
-  getPopulationStructure: () => {
-    return api.get('/bigscreen/populationbyage')
-  },
-  // 获取人口结构数据（按收入来源）
-  getPopulationByIncomeSource: () => {
-    return api.get('/bigscreen/populationbyincomesource')
-  },
-  // 获取人口结构数据（按政治面貌）
-  getPopulationByPoliticalStatus: () => {
-    return api.get('/bigscreen/populationbypoliticalstatus')
-  },
-  // 获取人口结构数据（按性别）
-  getPopulationBySex: () => {
-    return api.get('/bigscreen/populationbysex')
-  },
-  // 获取人口结构数据（按学历）
-  getPopulationByEducationLevel: () => {
-    return api.get('/bigscreen/populationbyeducationlevel')
-  },
-  // 获取人口结构数据（按婚姻状况）
-  getPopulationByMaritalStatus: () => {
-    return api.get('/bigscreen/populationbymaritalstatus')
-  },
-  // 获取人口结构数据（按优抚情况）
-  getPopulationByWelfareStatus: () => {
-    return api.get('/bigscreen/populationbywelfarestatus')
-  },
-  // 获取布尔统计数量
-  getBooleanCount: () => {
-    return api.get('/bigscreen/boolencount')
-  },
-  // 获取党员统计总览数据
-  getPartyMemberCounts: () => {
-    return api.get('/bigscreen/partymembercounts')
-  }
-}
 
 // 党费缴纳API
 export const partyDuesAPI = {
@@ -820,6 +794,56 @@ export const roleAPI = {
   addRole: (data) => api.post('/role/addrole', data),
   updateRole: (data) => api.put('/role/updaterole', data),
   deleteRole: (id) => api.delete('/role/deleterole', { params: { id } })
+}
+
+// 大屏数据API
+export const bigScreenAPI = {
+  // 人口结构相关
+  getPopulationByAge: () => api.get('/bigscreen/populationbyage'),
+  getPopulationByIncomeSource: () => api.get('/bigscreen/populationbyincomesource'),
+  getPopulationByPoliticalStatus: () => api.get('/bigscreen/populationbypoliticalstatus'),
+  getPopulationBySex: () => api.get('/bigscreen/populationbysex'),
+  getPopulationByEducationLevel: () => api.get('/bigscreen/populationbyeducationlevel'),
+  getPopulationByWelfareStatus: () => api.get('/bigscreen/populationbywelfarestatus'),
+  getPopulationByMaritalStatus: () => api.get('/bigscreen/populationbymaritalstatus'),
+  
+  // 基础统计相关
+  getBoolenCount: () => api.get('/bigscreen/boolencount'),
+  getPartyMemberCounts: () => api.get('/bigscreen/partymembercounts'),
+  getVillageResidentCounts: () => api.get('/bigscreen/villageresidentcounts'),
+  getTotalPopulation: () => api.get('/bigscreen/totalpopulation'),
+  
+  // 特殊群体统计
+  getHealthStatusCounts: () => api.get('/bigscreen/healthstatuscounts'),
+  getPovertyCounts: () => api.get('/bigscreen/povertycounts'),
+  getDisabilityCounts: () => api.get('/bigscreen/disabilitycounts'),
+  getOnlyChildFamilyCounts: () => api.get('/bigscreen/onlychildfamilycounts'),
+  getMartyrFamilyCounts: () => api.get('/bigscreen/martyrfamilycounts'),
+  getOtherSubsidyCounts: () => api.get('/bigscreen/othersubsidycounts'),
+  getVeteranCounts: () => api.get('/bigscreen/veterancounts'),
+  getResidenceCounts: () => api.get('/bigscreen/residencecounts'),
+  
+  // 经济收益统计
+  getEconomyProjectStats: () => api.get('/bigscreen/economyprojectstats'),
+  getEconomyInvestmentStats: () => api.get('/bigscreen/economyinvestmentstats'),
+  getEconomyRevenueStats: () => api.get('/bigscreen/economyrevenuestats'),
+  getEconomyTransactionStats: () => api.get('/bigscreen/economytransactionstats'),
+  getEconomyOverview: () => api.get('/bigscreen/economyoverview'),
+  
+  // 党费统计
+  getPartyDuesPaymentStats: () => api.get('/bigscreen/partyduepaymentstats'),
+  getPartyDuesAmountStats: () => api.get('/bigscreen/partydueamountstats'),
+  getPartyDuesRateStats: () => api.get('/bigscreen/partydueratestats'),
+  getPartyDuesOverview: () => api.get('/bigscreen/partydueoverview'),
+  
+  // 村委统计
+  getCommitteeMemberStats: () => api.get('/bigscreen/committeememberstats'),
+  getCommitteeDutyStats: () => api.get('/bigscreen/committeedutystats'),
+  getCommitteeOverview: () => api.get('/bigscreen/committeeoverview'),
+  
+  // 综合概览
+  getOverview: () => api.get('/bigscreen/overview'),
+  getVillageComprehensiveOverview: () => api.get('/bigscreen/villagecomprehensiveoverview')
 }
 
 export default api

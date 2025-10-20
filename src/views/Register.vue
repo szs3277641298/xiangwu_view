@@ -1,83 +1,91 @@
 <template>
   <div class="register-container">
-    <div class="background-decoration">
-      <div class="circle circle-1"></div>
-      <div class="circle circle-2"></div>
-      <div class="circle circle-3"></div>
-    </div>
-    
-    <div class="register-wrapper">
-      <div class="register-left"></div>
-      
-      <div class="register-right fade-in" :class="{ 'form-fade-in': formFadeIn }">
-        <div class="register-form-container">
-          <div class="register-header">
-            <h2>创建账号</h2>
-            <p>填写以下信息完成注册</p>
-          </div>
-          
-          <el-form ref="registerForm" :model="registerForm" :rules="registerRules" class="register-form" autocomplete="off">
-            <el-form-item prop="username">
-              <el-input
-                v-model="registerForm.username"
-                placeholder="请输入用户名"
-                prefix-icon="el-icon-user"
-                :validate-event="false"
-                autocomplete="off"
-              ></el-input>
-            </el-form-item>
-            
-            <el-form-item prop="captcha">
-              <div class="captcha-container">
-                <el-input
-                  v-model="registerForm.captcha"
-                  placeholder="请输入验证码"
-                  prefix-icon="el-icon-picture-outline"
-                  :validate-event="false"
-                ></el-input>
-                <div class="captcha-image" @click="getCaptcha">
-                  <img :src="captchaImage" alt="验证码" v-if="captchaImage" />
-                  <span v-else>点击获取验证码</span>
-                </div>
-              </div>
-            </el-form-item>
-            
-            <el-form-item prop="password">
-              <el-input
-                v-model="registerForm.password"
-                type="password"
-                placeholder="请设置密码"
-                prefix-icon="el-icon-lock"
-                :validate-event="false"
-                show-password
-                autocomplete="new-password"
-              ></el-input>
-            </el-form-item>
-            
-            <el-form-item prop="confirmPassword">
-              <el-input
-                v-model="registerForm.confirmPassword"
-                type="password"
-                placeholder="请确认密码"
-                prefix-icon="el-icon-lock"
-                :validate-event="false"
-                autocomplete="new-password"
-                show-password
-              ></el-input>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button type="primary" @click="handleRegister" :loading="loading" class="register-button">
-                {{ loading ? '注册中...' : '立即注册' }}
-              </el-button>
-            </el-form-item>
-            
-            <div class="login-link">
-              <span>已有账号？</span>
-              <el-button type="text" @click="toLogin" class="login-button-link">立即登录</el-button>
-            </div>
-          </el-form>
+    <!-- 动态背景 -->
+    <DynamicBackground />
+
+    <div class="register-wrapper fade-in" :class="{ 'form-fade-in': formFadeIn }">
+      <div class="register-form-container">
+        <!-- 系统标题 -->
+        <div class="system-title">
+          <h1>村级信息管理系统</h1>
+          <p class="system-subtitle">村级综合管理平台</p>
         </div>
+        
+        <div class="register-header">
+          <p>填写以下信息完成注册</p>
+      </div>
+
+      <el-form ref="registerForm" :model="registerForm" :rules="registerRules" class="register-form" autocomplete="off">
+        <el-form-item prop="username">
+          <el-input
+            v-model="registerForm.username"
+            placeholder="请输入用户名"
+            prefix-icon="el-icon-user"
+            :validate-event="false"
+            autocomplete="off"
+          ></el-input>
+        </el-form-item>
+
+        <el-form-item prop="captcha">
+          <div class="captcha-container">
+            <el-input
+              v-model="registerForm.captcha"
+              placeholder="请输入验证码"
+              prefix-icon="el-icon-picture-outline"
+              :validate-event="false"
+            ></el-input>
+            <div class="captcha-image" @click="getCaptcha">
+              <img :src="captchaImage" alt="验证码" v-if="captchaImage" />
+              <span v-else>点击获取验证码</span>
+            </div>
+          </div>
+        </el-form-item>
+
+        <el-form-item prop="password">
+          <el-input
+            v-model="registerForm.password"
+            type="password"
+            placeholder="请设置密码"
+            prefix-icon="el-icon-lock"
+            :validate-event="false"
+            show-password
+            autocomplete="new-password"
+          ></el-input>
+        </el-form-item>
+
+        <el-form-item prop="confirmPassword">
+          <el-input
+            v-model="registerForm.confirmPassword"
+            type="password"
+            placeholder="请确认密码"
+            prefix-icon="el-icon-lock"
+            :validate-event="false"
+            autocomplete="new-password"
+            show-password
+          ></el-input>
+        </el-form-item>
+
+        <el-form-item prop="phone">
+          <el-input
+            v-model="registerForm.phone"
+            placeholder="请输入手机号"
+            prefix-icon="el-icon-mobile-phone"
+            :validate-event="false"
+            autocomplete="off"
+          ></el-input>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button type="primary" @click="handleRegister" :loading="loading" class="register-button">
+            {{ loading ? '注册中...' : '立即注册' }}
+          </el-button>
+        </el-form-item>
+
+        <div class="login-link">
+          <span>已有账号？</span>
+          <el-button type="text" @click="toLogin" class="login-button-link">立即登录</el-button>
+        </div>
+        </el-form>
       </div>
     </div>
   </div>
@@ -86,6 +94,7 @@
 <script>
 import { authAPI } from '@/api/api'
 import { showErrorMessage } from '@/utils/errorHandler'
+import DynamicBackground from '@/components/DynamicBackground.vue'
 
 export default {
   name: 'Register',
@@ -96,7 +105,8 @@ export default {
         username: '',
         captcha: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        phone: ''
       },
       captchaImage: '',
       captchaKey: '',
@@ -121,6 +131,18 @@ export default {
             validator: (rule, value, callback) => {
               if (value !== this.registerForm.password) {
                 callback(new Error('两次输入的密码不一致'))
+              } else {
+                callback()
+              }
+            },
+            trigger: 'blur'
+          }
+        ],
+        phone: [
+          {
+            validator: (rule, value, callback) => {
+              if (value && !/^1[3-9]\d{9}$/.test(value)) {
+                callback(new Error('请输入正确的手机号'))
               } else {
                 callback()
               }
@@ -185,14 +207,15 @@ export default {
         if (valid) {
           this.loading = true
           try {
-            const { username, captcha, password } = this.registerForm
-            
+            const { username, captcha, password, phone } = this.registerForm
+
             // 构建注册请求数据
             const registerData = {
               username,
               password,
               captchaInput: captcha,
-              captchaKey: this.captchaKey
+              captchaKey: this.captchaKey,
+              phone
             }
             
             const response = await authAPI.register(registerData)
@@ -241,102 +264,55 @@ export default {
 /* 背景装饰 */
 
 
-/* 注册包装器 */
+/* 注册包装器 - 居中布局 */
 .register-wrapper {
   display: flex;
+  justify-content: center;
+  align-items: center;
   width: 100%;
   height: 100vh;
   min-height: 800px;
-  overflow: hidden;
-  z-index: 1;
   margin: 0;
   padding: 0;
-}
-
-/* 左侧背景图 */
-.register-left {
-  flex: 1;
-  min-width: 350px;
-  background-image: url('@/assets/login/loginbkg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  position: relative;
-  filter: blur(12px);
-  -webkit-filter: blur(12px);
-}
-
-/* 背景图渐变模糊效果 - 消除分界线 */
-.register-left::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.02) 15%,
-    rgba(255, 255, 255, 0.05) 25%,
-    rgba(255, 255, 255, 0.08) 35%,
-    rgba(255, 255, 255, 0.12) 45%,
-    rgba(255, 255, 255, 0.18) 55%,
-    rgba(255, 255, 255, 0.25) 65%,
-    rgba(255, 255, 255, 0.35) 75%,
-    rgba(255, 255, 255, 0.45) 85%,
-    rgba(255, 255, 255, 0.55) 95%,
-    rgba(255, 255, 255, 0.6) 100%
-  );
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
   z-index: 1;
 }
 
-/* 左侧到右侧的虚化过渡 - 消除分界线 */
-.register-left::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    90deg, 
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.01) 20%,
-    rgba(255, 255, 255, 0.03) 40%,
-    rgba(255, 255, 255, 0.06) 60%,
-    rgba(255, 255, 255, 0.1) 80%,
-    rgba(255, 255, 255, 0.15) 100%
-  );
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
-  z-index: 2;
-}
-
-/* 右侧注册表单 */
-.register-right {
-  flex: 1;
-  min-width: 350px;
-  padding: 80px 60px;
-  display: flex;
-  flex-direction: column;
-  background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  position: relative;
-  z-index: 3;
-}
-
+/* 注册表单容器 - 居中毛玻璃效果 */
 .register-form-container {
-  max-width: 400px;
-  margin: 0 auto;
   width: 100%;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  max-width: 450px;
+  padding: 60px 50px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+
+/* 系统标题样式 */
+.system-title {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.system-title h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+  letter-spacing: 1px;
+}
+
+.system-subtitle {
+  font-size: 16px;
+  color: #7f8c8d;
+  margin: 0;
+  font-weight: 400;
 }
 
 .register-header {
@@ -433,88 +409,51 @@ export default {
 }
 
 /* 响应式调整 - 针对不同屏幕尺寸优化 */
-@media (max-width: 1200px) {
-  .register-wrapper {
-    height: 100vh;
-  }
-  
-  .register-right {
-    padding: 60px 40px;
-  }
-}
-
-@media (max-width: 992px) {
-  .register-wrapper {
-    width: 100%;
-    height: 100vh;
-  }
-  
-  .register-left {
-    display: none;
-  }
-  
-  .register-right {
-    flex: 1;
-    background-color: rgba(255, 255, 255, 0.95);
-  }
-  
+@media (max-width: 768px) {
   .register-form-container {
     max-width: 400px;
-    width: 100%;
+    padding: 50px 40px;
+    margin: 20px;
   }
-}
 
-@media (max-width: 768px) {
-  .register-right {
-    padding: 40px 30px;
-  }
-  
   .register-header h2 {
     font-size: 28px;
   }
-  
+
   .captcha-container {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .captcha-image {
     width: 100%;
+    margin-top: 10px;
   }
 }
 
 @media (max-width: 576px) {
-  .register-container {
-    padding: 0;
+  .register-form-container {
+    padding: 40px 30px;
+    margin: 15px;
   }
-  
-  .register-right {
-    padding: 30px 20px;
-  }
-  
+
   .register-header h2 {
     font-size: 24px;
   }
-  
-  .register-form {
-    padding: 0 10px;
-  }
-  
+
   .register-form .el-form-item {
     margin-bottom: 16px;
   }
 }
 
-/* 确保在小屏幕设备上的全屏显示 */
 @media (max-width: 480px) {
-  .register-wrapper {
-    min-height: 100vh;
-    height: auto;
+  .register-form-container {
+    padding: 30px 20px;
+    margin: 10px;
   }
-  
-  .register-right {
-    min-height: 100vh;
-    height: auto;
+
+  .register-header h2 {
+    font-size: 22px;
   }
 }
 </style>

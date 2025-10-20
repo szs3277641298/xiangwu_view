@@ -261,17 +261,12 @@ const resetForm = () => {
 // 填充编辑数据
 const fillEditData = async () => {
   if (props.editData) {
-    // 处理 LocalDateTime 格式的日期
+    // 处理 LocalDate 格式的日期
     let formattedEntryDate = null
     if (props.editData.entryDate) {
       try {
-        // 处理 yyyy-MM-dd HH:mm:ss 格式
-        if (typeof props.editData.entryDate === 'string' && props.editData.entryDate.includes(' ')) {
-          const datePart = props.editData.entryDate.split(' ')[0] // 取日期部分
-          formattedEntryDate = new Date(datePart)
-        } else {
-          formattedEntryDate = new Date(props.editData.entryDate)
-        }
+        // 处理 yyyy-MM-dd 格式
+        formattedEntryDate = new Date(props.editData.entryDate)
       } catch (error) {
         console.error('日期解析错误:', error)
         formattedEntryDate = null
@@ -343,15 +338,12 @@ const handleSubmit = async () => {
       submitData.dutyId = formData.dutyId
     }
     if (formData.entryDate) {
-      // 将日期转换为 yyyy-MM-dd HH:mm:ss 格式
+      // 将日期转换为 yyyy-MM-dd 格式
       const date = new Date(formData.entryDate)
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      const seconds = String(date.getSeconds()).padStart(2, '0')
-      submitData.entryDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      submitData.entryDate = `${year}-${month}-${day}`
     }
     if (formData.responsibility && formData.responsibility.trim()) {
       submitData.responsibility = formData.responsibility.trim()

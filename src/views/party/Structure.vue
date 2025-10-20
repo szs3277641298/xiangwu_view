@@ -1,9 +1,16 @@
 <template>
   <div class="structure-container">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h2>组织架构统计</h2>
-      <p>查看党组织的层级结构和人员构成情况</p>
+
+    <!-- 暂未开发提示遮罩层 -->
+    <div class="unavailable-overlay">
+      <div class="unavailable-content">
+        <div class="unavailable-icon">
+          <el-icon><Warning /></el-icon>
+        </div>
+        <div class="unavailable-title">页面暂无需求</div>
+        <div class="unavailable-subtitle">暂未开发</div>
+        <div class="unavailable-description">什么都不能点</div>
+      </div>
     </div>
     
     <!-- 工具栏 -->
@@ -377,7 +384,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { User, UserFilled, OfficeBuilding, Calendar, Star, Refresh, Download, Loading } from '@element-plus/icons-vue'
+import { User, UserFilled, OfficeBuilding, Calendar, Star, Refresh, Download, Loading, Warning } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../store/index.js'
 
@@ -563,25 +570,31 @@ onMounted(() => {
 
 <style scoped>
 .structure-container {
-  height: 100%;
+  height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
 
 .page-header {
   margin-bottom: 20px;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .page-header h2 {
   margin: 0 0 8px 0;
   font-size: 24px;
   font-weight: 600;
+  color: #9ca3af;
 }
 
 .page-header p {
   margin: 0;
   font-size: 14px;
-  color: #909399;
+  color: #d1d5db;
 }
 
 .toolbar {
@@ -825,12 +838,120 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* 暂未开发提示遮罩层样式 */
+.unavailable-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  backdrop-filter: blur(3px);
+  overflow: hidden;
+  animation: none !important;
+}
+
+.unavailable-content {
+  text-align: center;
+  padding: 50px 40px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 2px solid #e5e7eb;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 90vw;
+  min-width: 320px;
+  animation: none !important;
+}
+
+.unavailable-icon {
+  margin: 0 auto 24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.unavailable-icon .el-icon {
+  font-size: 36px;
+  color: #d97706;
+  animation: none !important;
+}
+
+.unavailable-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.unavailable-subtitle {
+  font-size: 18px;
+  color: #4b5563;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.unavailable-description {
+  font-size: 15px;
+  color: #6b7280;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* 禁用所有按钮和交互元素 */
+.structure-container :deep(.el-button) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+.structure-container :deep(.el-select) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+}
+
+.structure-container :deep(.el-date-editor) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+}
+
+.structure-container :deep(.el-table) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+}
+
+.structure-container :deep(.el-pagination) {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+}
+
+.structure-container :deep(.el-card) {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+}
+
+/* 确保所有文本内容都可见但不可交互 */
+.structure-container :deep(*) {
+  user-select: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
 /* 响应式布局 */
 @media (max-width: 1200px) {
   .stats-cards {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
-  
+
   .charts-grid {
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   }
@@ -841,44 +962,44 @@ onMounted(() => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-filters {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-select,
   .date-filter,
   .search-input {
     width: 100%;
   }
-  
+
   .toolbar-actions {
     justify-content: center;
   }
-  
+
   .stats-cards {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
-  
+
   .charts-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .org-node {
     min-width: 180px;
     padding: 15px;
   }
-  
+
   .org-node.small {
     min-width: 120px;
     padding: 10px;
   }
-  
+
   .node-title {
     font-size: 14px;
   }
-  
+
   .node-stats {
     font-size: 12px;
   }

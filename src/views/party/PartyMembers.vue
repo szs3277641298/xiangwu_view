@@ -11,15 +11,6 @@
         <div class="header-actions">
           <el-button 
             type="text" 
-            @click="toggleDisplayMode"
-            class="display-toggle-btn"
-            :class="{ 'active': showFullInfo }"
-          >
-            <el-icon><InfoFilled /></el-icon>
-            {{ showFullInfo ? '简化显示' : '完整显示' }}
-          </el-button>
-          <el-button 
-            type="text" 
             @click="toggleSearchExpanded"
             class="toggle-btn"
           >
@@ -459,6 +450,13 @@
       </template>
     </el-dialog>
 
+    <!-- 导入结果详情对话框 -->
+    <ImportResultDialog
+      v-model="importResultDialogVisible"
+      :result-data="importResultData"
+      @refresh="loadData"
+    />
+
     <!-- 导出对话框 -->
     <el-dialog
       v-model="exportDialogVisible"
@@ -643,14 +641,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../store/index.js'
 import { partyMemberAPI, residentAPI, dictAPI } from '../../api/api.js'
 import api from '../../api/api.js'
+import ImportResultDialog from '@/components/ImportResultDialog.vue'
 
 // 用户状态
 const userStore = useUserStore()
+
 const isAdmin = computed(() => userStore.isAdmin)
 
-// 搜索和显示状态
+// 搜索状态
 const searchExpanded = ref(false)
-const showFullInfo = ref(true)
 
 
 // 字典类型和字典数据
@@ -716,6 +715,8 @@ const importDialogVisible = ref(false)
 const importLoading = ref(false)
 const selectedFile = ref(null)
 const uploadRef = ref(null)
+const importResultDialogVisible = ref(false)
+const importResultData = ref({})
 
 // 导出相关
 const exportDialogVisible = ref(false)
@@ -904,11 +905,6 @@ const clearVillagerSelection = () => {
   formData.residentId = null
 }
 
-// 切换显示模式
-const toggleDisplayMode = () => {
-  showFullInfo.value = !showFullInfo.value
-}
-
 // 切换搜索展开状态
 const toggleSearchExpanded = () => {
   searchExpanded.value = !searchExpanded.value
@@ -1012,15 +1008,7 @@ const loadData = async () => {
       Promise.allSettled(imagePromises)
       
       // 启动缓存清理定时器
-      startCacheCleanup()
       
-      // 预加载下一页的图片（如果存在）
-      if (response.data.total > currentPage.value * pageSize.value) {
-        // 延迟预加载，避免影响当前页面的显示
-        setTimeout(() => {
-          preloadImages(members)
-        }, 1000)
-      }
     } else {
       ElMessage.error(response?.message || '获取党员列表失败')
     }
@@ -1062,7 +1050,24 @@ const handleEdit = async (row) => {
   formData.residentId = row.residentId
   formData.partyDutyId = row.partyDutyId
   formData.branch = row.branch
-  formData.joinTime = row.joinTime
+  
+  // 处理日期格式 - 后端返回的是 yyyy-MM-dd HH:mm:ss 格式
+  if (row.joinTime) {
+    try {
+      if (typeof row.joinTime === 'string' && row.joinTime.includes(' ')) {
+        // 如果是 yyyy-MM-dd HH:mm:ss 格式，直接解析
+        formData.joinTime = new Date(row.joinTime)
+      } else {
+        // 如果是其他格式，尝试解析
+        formData.joinTime = new Date(row.joinTime)
+      }
+    } catch (error) {
+      console.error('日期解析错误:', error)
+      formData.joinTime = null
+    }
+  } else {
+    formData.joinTime = null
+  }
   
   // 获取村民信息
   try {
@@ -1155,12 +1160,15 @@ const handleSubmit = async () => {
       submitData.residentId = Number(formData.residentId)
     }
     if (formData.joinTime) {
-      // 将日期转换为 yyyy-MM-dd 格式
+      // 将日期转换为 yyyy-MM-dd HH:mm:ss 格式
       const date = new Date(formData.joinTime)
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
-      submitData.joinTime = `${year}-${month}-${day}`
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      submitData.joinTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
     }
     if (formData.partyDutyId) {
       submitData.partyDutyId = formData.partyDutyId
@@ -1211,45 +1219,9 @@ const handleSubmit = async () => {
   }
 }
 
-// 图片缓存管理
-const imageCache = new Map()
-const CACHE_SIZE_LIMIT = 100 // 最大缓存图片数量
-const CACHE_EXPIRE_TIME = 30 * 60 * 1000 // 缓存过期时间：30分钟
 
-// 缓存项结构
-class CacheItem {
-  constructor(blobUrl, timestamp) {
-    this.blobUrl = blobUrl
-    this.timestamp = timestamp
-  }
-  
-  isExpired() {
-    return Date.now() - this.timestamp > CACHE_EXPIRE_TIME
-  }
-}
 
-// 清理过期缓存
-const cleanExpiredCache = () => {
-  const now = Date.now()
-  for (const [key, item] of imageCache.entries()) {
-    if (item.isExpired()) {
-      URL.revokeObjectURL(item.blobUrl)
-      imageCache.delete(key)
-    }
-  }
-}
-
-// 清理最旧的缓存项（当缓存达到限制时）
-const cleanOldestCache = () => {
-  if (imageCache.size >= CACHE_SIZE_LIMIT) {
-    const oldestKey = imageCache.keys().next().value
-    const oldestItem = imageCache.get(oldestKey)
-    URL.revokeObjectURL(oldestItem.blobUrl)
-    imageCache.delete(oldestKey)
-  }
-}
-
-// 获取图片完整URL（带token认证和缓存管理）
+// 获取图片完整URL（带token认证）
 const getPhotoUrl = async (photoPath) => {
   if (!photoPath || typeof photoPath !== 'string') {
     return null
@@ -1260,25 +1232,7 @@ const getPhotoUrl = async (photoPath) => {
     return photoPath
   }
 
-  // 检查缓存
-  if (imageCache.has(photoPath)) {
-    const cacheItem = imageCache.get(photoPath)
-    if (!cacheItem.isExpired()) {
-      return cacheItem.blobUrl
-    } else {
-      // 清理过期缓存
-      URL.revokeObjectURL(cacheItem.blobUrl)
-      imageCache.delete(photoPath)
-    }
-  }
-
   try {
-    // 清理过期缓存
-    cleanExpiredCache()
-    
-    // 如果缓存达到限制，清理最旧的项
-    cleanOldestCache()
-    
     // 将反斜杠转换为正斜杠，确保路径格式正确
     const normalizedPath = photoPath.replace(/\\/g, '/')
     
@@ -1297,9 +1251,6 @@ const getPhotoUrl = async (photoPath) => {
     const blob = new Blob([response])
     const blobUrl = URL.createObjectURL(blob)
     
-    // 缓存blob URL和时间戳
-    imageCache.set(photoPath, new CacheItem(blobUrl, Date.now()))
-    
     return blobUrl
   } catch (error) {
     console.error('加载图片失败:', error)
@@ -1307,94 +1258,9 @@ const getPhotoUrl = async (photoPath) => {
   }
 }
 
-// 清理所有图片缓存
-const clearImageCache = () => {
-  for (const [key, item] of imageCache.entries()) {
-    URL.revokeObjectURL(item.blobUrl)
-  }
-  imageCache.clear()
-  console.log('图片缓存已清理')
-}
 
-// 获取缓存统计信息
-const getCacheStats = () => {
-  return {
-    size: imageCache.size,
-    limit: CACHE_SIZE_LIMIT,
-    keys: Array.from(imageCache.keys())
-  }
-}
 
-// 预加载图片（在后台静默加载）
-const preloadImages = async (members) => {
-  const preloadPromises = members
-    .filter(member => member.photo && !member.photoUrl)
-    .map(async (member) => {
-      try {
-        const photoUrl = await getPhotoUrl(member.photo)
-        // 找到对应的党员并更新photoUrl
-        const index = partyMembersData.value.findIndex(m => m.id === member.id)
-        if (index !== -1) {
-          partyMembersData.value[index].photoUrl = photoUrl
-        }
-      } catch (error) {
-        console.error(`预加载图片失败: ${member.name}`, error)
-      }
-    })
-  
-  // 并行预加载，不等待完成
-  Promise.allSettled(preloadPromises)
-}
 
-// 智能缓存清理（在内存压力大时自动清理）
-const smartCacheCleanup = () => {
-  // 如果缓存超过限制的80%，清理最旧的20%
-  if (imageCache.size > CACHE_SIZE_LIMIT * 0.8) {
-    const itemsToRemove = Math.floor(imageCache.size * 0.2)
-    const sortedEntries = Array.from(imageCache.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp)
-    
-    for (let i = 0; i < itemsToRemove; i++) {
-      const [key, item] = sortedEntries[i]
-      URL.revokeObjectURL(item.blobUrl)
-      imageCache.delete(key)
-    }
-    
-    console.log(`智能清理：移除了 ${itemsToRemove} 个缓存项`)
-  }
-}
-
-// 定期清理过期缓存（每5分钟执行一次）
-let cacheCleanupInterval = null
-
-const startCacheCleanup = () => {
-  if (cacheCleanupInterval) {
-    clearInterval(cacheCleanupInterval)
-  }
-  
-  cacheCleanupInterval = setInterval(() => {
-    cleanExpiredCache()
-    smartCacheCleanup()
-  }, 5 * 60 * 1000) // 5分钟
-}
-
-const stopCacheCleanup = () => {
-  if (cacheCleanupInterval) {
-    clearInterval(cacheCleanupInterval)
-    cacheCleanupInterval = null
-  }
-}
-
-// 调试功能：在控制台暴露缓存管理方法
-if (import.meta.env.DEV) {
-  window.partyImageCache = {
-    stats: getCacheStats,
-    clear: clearImageCache,
-    cleanup: cleanExpiredCache,
-    smartCleanup: smartCacheCleanup
-  }
-  console.log('图片缓存调试工具已加载，使用 window.partyImageCache 访问')
-}
 
 // 加载党员照片
 const loadMemberPhotos = async () => {
@@ -1448,11 +1314,11 @@ const handleBatchImport = () => {
 }
 
 
-// 监听搜索条件变化
-watch([searchForm], () => {
-  currentPage.value = 1
-  loadData()
-}, { deep: true })
+// 移除自动搜索功能，改为手动点击搜索按钮
+// watch([searchForm], () => {
+//   currentPage.value = 1
+//   loadData()
+// }, { deep: true })
 
 // 点击外部关闭搜索结果
 const handleClickOutside = (event) => {
@@ -1621,12 +1487,21 @@ const handleImport = async () => {
   try {
     const response = await partyMemberAPI.importPartyMembers(selectedFile.value)
     if (response.code === 200) {
-      ElMessage.success(response.message || '导入成功')
+      // 解析导入结果
+      importResultData.value = response
+      
+      // 关闭导入对话框
       importDialogVisible.value = false
       selectedFile.value = null
       uploadRef.value?.clearFiles()
-      // 刷新数据
-      loadData()
+      
+      // 显示导入结果详情对话框
+      importResultDialogVisible.value = true
+      
+      // 如果有成功导入的数据，刷新列表
+      if (response.success > 0) {
+        loadData()
+      }
     } else {
       ElMessage.error(response.message || '导入失败，请重试')
     }
@@ -1855,8 +1730,12 @@ const handleConfirmGenerateTemplate = async () => {
   
   exportLoading.value = true
   try {
-    // 构建完整路径
-    const fullPath = `${generateTemplateForm.directory}/党员信息导入模板.xlsx`
+    // 生成时间戳
+    const now = new Date()
+    const timestamp = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_')
+    
+    // 构建完整路径，文件名包含时间戳
+    const fullPath = `${generateTemplateForm.directory}/党员信息导入模板_${timestamp}.xlsx`
     
     // 构建请求
     const request = {
@@ -1881,8 +1760,6 @@ const handleConfirmGenerateTemplate = async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
-  stopCacheCleanup()
-  clearImageCache()
 })
 </script>
 
@@ -1923,26 +1800,6 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.display-toggle-btn {
-  color: #606266;
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
-}
-
-.display-toggle-btn:hover {
-  color: #409eff;
-  background: #f5f7fa;
-  border-color: #409eff;
-}
-
-.display-toggle-btn.active {
-  color: #409eff;
-  background: #ecf5ff;
-  border-color: #409eff;
-}
 
 .toggle-btn {
   color: #606266;
@@ -2811,26 +2668,6 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.display-toggle-btn {
-  color: #606266;
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
-}
-
-.display-toggle-btn:hover {
-  color: #409eff;
-  background: #f5f7fa;
-  border-color: #409eff;
-}
-
-.display-toggle-btn.active {
-  color: #409eff;
-  background: #ecf5ff;
-  border-color: #409eff;
-}
 
 .toggle-btn {
   color: #606266;

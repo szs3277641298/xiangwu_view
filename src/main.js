@@ -24,6 +24,7 @@ app.use(pinia)
 app.use(ElementPlus)
 app.use(DataV)
 
+
 // 在挂载前加载用户数据
 const userStore = useUserStore()
 userStore.loadUserData()

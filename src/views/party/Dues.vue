@@ -97,6 +97,12 @@
                     class="form-input"
                   />
                 </el-form-item>
+                <el-form-item label="缴纳状态">
+                  <el-select v-model="searchForm.statusId" placeholder="请选择" clearable class="form-input">
+                    <el-option label="已缴纳" :value="1" />
+                    <el-option label="未缴纳" :value="0" />
+                  </el-select>
+                </el-form-item>
               </div>
             </div>
             
@@ -107,11 +113,6 @@
                 <span>党费信息</span>
               </div>
               <div class="form-grid">
-                <el-form-item label="缴纳状态">
-                  <el-select v-model="searchForm.statusId" placeholder="请选择" clearable class="form-input">
-                    <el-option v-for="option in statusOptions" :key="option.id" :label="option.name" :value="option.id" />
-                  </el-select>
-                </el-form-item>
                 <el-form-item label="缴纳金额范围">
                   <div class="age-range">
                     <el-input
@@ -291,7 +292,7 @@
               <!-- 隐藏的输入框用于表单验证 -->
               <el-input v-model="formData.memberId" style="display: none;" />
               <el-input
-                :value="selectedMember ? selectedMember.name : (formData.name || '')"
+                :value="selectedMember ? selectedMember.name : ''"
                 placeholder="当前党员信息"
                 readonly
                 class="member-input"
@@ -300,13 +301,13 @@
                   <el-icon class="lock-icon"><Lock /></el-icon>
                 </template>
               </el-input>
-              <div v-if="selectedMember || formData.name" class="selected-member readonly">
+              <div v-if="selectedMember" class="selected-member readonly">
                 <div class="member-info">
-                  <span class="member-name">{{ selectedMember ? selectedMember.name : formData.name }}</span>
+                  <span class="member-name">{{ selectedMember.name }}</span>
                   <span class="member-details">
-                    {{ getGenderLabel(selectedMember ? selectedMember.gender : formData.gender) }} · 
-                    {{ selectedMember ? selectedMember.age : formData.age }}岁 · 
-                    {{ selectedMember ? selectedMember.phone : formData.phone }}
+                    {{ getGenderLabel(selectedMember.gender) }} · 
+                    {{ selectedMember.age }}岁 · 
+                    {{ selectedMember.phone }}
                   </span>
                 </div>
               </div>
@@ -378,13 +379,6 @@
             <el-input v-model.number="formData.amount" placeholder="请输入缴纳金额">
               <template #prefix>¥</template>
             </el-input>
-          </el-form-item>
-        </div>
-        <div class="form-row">
-          <el-form-item label="缴纳状态" prop="statusId">
-            <el-select v-model="formData.statusId" placeholder="请选择缴纳状态">
-              <el-option v-for="option in statusOptions" :key="option.id" :label="option.name" :value="option.id" />
-            </el-select>
           </el-form-item>
         </div>
         <div class="form-row">
@@ -499,6 +493,7 @@
               <el-input
                 v-model="pathForm.filename"
                 placeholder="请输入文件名（不含扩展名）"
+                readonly
                 @input="handleFilenameChange"
               />
               <div class="filename-preview">
@@ -509,6 +504,7 @@
               <el-input
                 v-model="pathForm.sheetName"
                 placeholder="请输入工作表名称"
+                readonly
               />
             </el-form-item>
           </el-form>
@@ -531,14 +527,14 @@
       title="选择模板保存路径"
       width="600px"
       :before-close="handleTemplatePathClose"
-      class="template-path-dialog"
+      class="path-dialog"
       center
       :modal="true"
       :close-on-click-modal="false"
       :close-on-press-escape="true"
     >
-      <div class="template-path-container">
-        <div class="template-path-form">
+      <div class="path-container">
+        <div class="path-form">
           <el-form :model="templatePathForm" label-width="120px">
             <el-form-item label="保存路径" required>
               <div class="path-input-group">
@@ -559,19 +555,7 @@
                 <span>由于浏览器安全限制，无法直接获取完整路径，请手动输入保存目录的完整路径</span>
               </div>
             </el-form-item>
-            <el-form-item label="文件名" required>
-              <el-input
-                v-model="templatePathForm.filename"
-                placeholder="请输入文件名（不含扩展名）"
-                @input="handleTemplateFilenameChange"
-              />
-            </el-form-item>
-            <el-form-item label="工作表名称" required>
-              <el-input
-                v-model="templatePathForm.sheetName"
-                placeholder="请输入工作表名称"
-              />
-            </el-form-item>
+
           </el-form>
         </div>
         
@@ -584,6 +568,13 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 导入结果详情对话框 -->
+    <ImportResultDialog
+      v-model="importResultDialogVisible"
+      :result-data="importResultData"
+      @refresh="loadData"
+    />
   </div>
 </template>
 
@@ -594,6 +585,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../store/index.js'
 import { partyDuesAPI, partyMemberAPI, dictAPI } from '../../api/api.js'
 import { getGenderLabel } from '../../utils/constants.js'
+import ImportResultDialog from '../../components/ImportResultDialog.vue'
 
 // 用户状态
 const userStore = useUserStore()
@@ -626,9 +618,9 @@ const searchForm = reactive({
   genderId: null,
   idCard: '',
   phone: '',
+  statusId: null,
   minAmount: null,
   maxAmount: null,
-  statusId: null,
   paidDateStart: null,
   paidDateEnd: null,
   dueDateStart: null,
@@ -642,13 +634,11 @@ const searchExpanded = ref(false)
 const dictTypeList = ref([])
 const dictDataMap = ref({})
 const fieldToDictTypeMap = {
-  genderId: 'gender',
-  statusId: 'dues_status'
+  genderId: 'gender'
 }
 
 // 动态选项数据
 const genderOptions = ref([])
-const statusOptions = ref([])
 
 
 // 党员列表（模拟数据）
@@ -701,11 +691,13 @@ const importDialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
 const uploadRef = ref(null)
-const selectedFile = ref(null)
 const submitting = ref(false)
 
 // 批量导入相关
 const importLoading = ref(false)
+const selectedFile = ref(null)
+const importResultDialogVisible = ref(false)
+const importResultData = ref({})
 
 // 导出相关
 const exportDialogVisible = ref(false)
@@ -724,7 +716,7 @@ const templatePathDialogVisible = ref(false)
 const templatePathForm = reactive({
   directory: '',
   filename: '',
-  sheetName: '模板_党费缴纳记录'
+  sheetName: '党费缴纳记录'
 })
 
 // 党员搜索相关
@@ -739,7 +731,6 @@ const formData = reactive({
   residentId: null,
   idCard: '',           // 身份证号 (String)
   amount: null,         // 缴费金额 (BigDecimal -> Number)
-  statusId: null,       // 缴费状态ID (Integer)
   paidDate: null,       // 实际缴纳日期 (LocalDateTime)
   dueDate: null,        // 应缴截止日期 (LocalDateTime)
   createTime: null
@@ -753,9 +744,6 @@ const formRules = {
   amount: [
     { required: true, message: '请输入缴费金额', trigger: 'blur' },
     { type: 'number', min: 0.01, message: '缴费金额必须大于0', trigger: 'blur' }
-  ],
-  statusId: [
-    { required: true, message: '请选择缴费状态', trigger: 'change' }
   ],
   paidDate: [
     { required: true, message: '请选择实际缴纳日期', trigger: 'change' }
@@ -855,14 +843,17 @@ const formatDateTime = (dateTime) => {
   return new Date(dateTime).toLocaleString('zh-CN')
 }
 
-// 格式化日期为后端期望的格式 (yyyy-MM-dd)
+// 格式化日期为后端期望的格式 (yyyy-MM-dd HH:mm:ss)
 const formatDateForBackend = (date) => {
   if (!date) return null
   const dateObj = new Date(date)
   const year = dateObj.getFullYear()
   const month = String(dateObj.getMonth() + 1).padStart(2, '0')
   const day = String(dateObj.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const hours = String(dateObj.getHours()).padStart(2, '0')
+  const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+  const seconds = String(dateObj.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 // 清理搜索表单，只发送有值的字段
@@ -892,12 +883,6 @@ const loadDictDataForField = async (fieldName) => {
       switch (fieldName) {
         case 'genderId':
           genderOptions.value = dictData.map(item => ({
-            id: item.id,
-            name: item.dictLabel
-          }))
-          break
-        case 'statusId':
-          statusOptions.value = dictData.map(item => ({
             id: item.id,
             name: item.dictLabel
           }))
@@ -990,9 +975,7 @@ const handleAddPayment = () => {
   isEdit.value = false
   // 重置表单
   Object.keys(formData).forEach(key => {
-    if (key === 'statusId') {
-      formData[key] = null
-    } else if (key === 'id' || key === 'createTime') {
+    if (key === 'id' || key === 'createTime') {
       formData[key] = null
     } else if (typeof formData[key] === 'number') {
       formData[key] = null
@@ -1009,47 +992,64 @@ const handleAddPayment = () => {
 const handleEdit = async (row) => {
   isEdit.value = true
   
-  // 复制所有字段
-  Object.assign(formData, row)
+  // 只复制必要的字段
+  formData.id = row.id
+  formData.memberId = row.memberId
+  formData.residentId = row.residentId
+  formData.idCard = row.idCard || ''
+  formData.amount = row.amount
+  formData.createTime = row.createTime
   
-  // 如果有党员ID，获取党员信息
-  if (row.memberId) {
+  // 处理日期格式 - 后端返回的是 yyyy-MM-dd HH:mm:ss 格式
+  if (row.paidDate) {
     try {
-      const response = await partyMemberAPI.getPartyMemberList({
-        id: row.memberId,
-        pageNum: 1,
-        pageSize: 1
-      })
-      if (response && response.code === 200 && response.data && response.data.list.length > 0) {
-        const member = response.data.list[0]
-        selectedMember.value = member
-        memberSearchQuery.value = member.name || ''
-        // 确保党员相关字段被正确设置
-        formData.memberId = member.id
-        formData.name = member.name
-        formData.gender = member.gender
-        formData.age = member.age
-        formData.phone = member.phone
+      if (typeof row.paidDate === 'string' && row.paidDate.includes(' ')) {
+        // 如果是 yyyy-MM-dd HH:mm:ss 格式，直接解析
+        formData.paidDate = new Date(row.paidDate)
       } else {
-        // 如果获取党员详情失败，使用原始数据
-        formData.memberId = row.memberId
-        formData.name = row.name || ''
-        formData.gender = row.gender || ''
-        formData.age = row.age || null
-        formData.phone = row.phone || ''
+        // 如果是其他格式，尝试解析
+        formData.paidDate = new Date(row.paidDate)
       }
     } catch (error) {
-      console.error('获取党员信息失败:', error)
-      // 即使获取失败，也确保有基本的党员信息显示
-      formData.memberId = row.memberId
-      formData.name = row.name || ''
-      formData.gender = row.gender || ''
-      formData.age = row.age || null
-      formData.phone = row.phone || ''
+      console.error('缴费日期解析错误:', error)
+      formData.paidDate = null
     }
   } else {
-    // 如果没有党员ID，至少设置一个默认值来避免验证错误
-    formData.memberId = row.memberId || 1
+    formData.paidDate = null
+  }
+  
+  if (row.dueDate) {
+    try {
+      if (typeof row.dueDate === 'string' && row.dueDate.includes(' ')) {
+        // 如果是 yyyy-MM-dd HH:mm:ss 格式，直接解析
+        formData.dueDate = new Date(row.dueDate)
+      } else {
+        // 如果是其他格式，尝试解析
+        formData.dueDate = new Date(row.dueDate)
+      }
+    } catch (error) {
+      console.error('应缴日期解析错误:', error)
+      formData.dueDate = null
+    }
+  } else {
+    formData.dueDate = null
+  }
+  
+  // 直接使用表格行数据中的党员信息，无需额外请求
+  if (row.memberId) {
+    // 构造党员信息对象用于显示
+    selectedMember.value = {
+      id: row.memberId,
+      name: row.name || row.memberName || '未知党员',
+      gender: row.gender,
+      age: row.age,
+      phone: row.phone
+    }
+    memberSearchQuery.value = row.name || row.memberName || ''
+  } else {
+    // 如果没有党员ID，清空选择
+    selectedMember.value = null
+    memberSearchQuery.value = ''
   }
   
   dialogVisible.value = true
@@ -1096,25 +1096,14 @@ const handleSubmit = async () => {
     
     submitting.value = true
     
-    // 准备提交数据
-    const submitData = {
-      ...formData,
-      // 确保数字类型字段正确转换
-      memberId: formData.memberId ? Number(formData.memberId) : null,
-      residentId: formData.residentId ? Number(formData.residentId) : null,
-      amount: formData.amount ? Number(formData.amount) : null,
-      statusId: formData.statusId ? Number(formData.statusId) : null,
-      // 格式化日期为后端期望的格式 (yyyy-MM-dd)
-      paidDate: formData.paidDate ? formatDateForBackend(formData.paidDate) : null,
-      dueDate: formData.dueDate ? formatDateForBackend(formData.dueDate) : null
-    }
-    
     if (isEdit.value) {
-      // 编辑模式 - 只发送更新所需的字段
+      // 编辑模式 - 发送和新增时相同的字段
       const updateData = {
         id: formData.id,
+        memberId: formData.memberId ? Number(formData.memberId) : null,
+        residentId: formData.residentId ? Number(formData.residentId) : null,
+        idCard: formData.idCard || null,
         amount: formData.amount ? Number(formData.amount) : null,
-        statusId: formData.statusId ? Number(formData.statusId) : null,
         paidDate: formData.paidDate ? formatDateForBackend(formData.paidDate) : null,
         dueDate: formData.dueDate ? formatDateForBackend(formData.dueDate) : null
       }
@@ -1130,8 +1119,17 @@ const handleSubmit = async () => {
         ElMessage.error(response.message || '编辑失败')
       }
     } else {
-      // 新增模式 - 调用新增API
-      const response = await partyDuesAPI.addPartyDues(submitData)
+      // 新增模式 - 只发送后端需要的字段
+      const addData = {
+        memberId: formData.memberId ? Number(formData.memberId) : null,
+        residentId: formData.residentId ? Number(formData.residentId) : null,
+        idCard: formData.idCard || null,
+        amount: formData.amount ? Number(formData.amount) : null,
+        paidDate: formData.paidDate ? formatDateForBackend(formData.paidDate) : null,
+        dueDate: formData.dueDate ? formatDateForBackend(formData.dueDate) : null
+      }
+      console.log('新增请求数据:', addData)
+      const response = await partyDuesAPI.addPartyDues(addData)
       if (response.code === 200) {
         ElMessage.success('新增成功')
         dialogVisible.value = false
@@ -1199,15 +1197,20 @@ const handleImport = async () => {
     
     const response = await partyDuesAPI.importPartyDues(formData)
     if (response.code === 200) {
-      // 检查是否包含错误信息（部分导入成功的情况）
-      if (response.message && response.message.includes('失败原因')) {
-        ElMessage.warning(response.message)
-      } else {
-        ElMessage.success(response.message || '导入成功')
-      }
+      // 解析导入结果
+      importResultData.value = response
+      
+      // 关闭导入对话框
       importDialogVisible.value = false
       clearSelectedFile()
-      loadData()
+      
+      // 显示导入结果详情对话框
+      importResultDialogVisible.value = true
+      
+      // 如果有成功导入的数据，刷新列表
+      if (response.success > 0) {
+        loadData()
+      }
     } else {
       ElMessage.error(response.message || '导入失败，请重试')
     }
@@ -1323,10 +1326,11 @@ const handleConfirmExport = async () => {
       queryRequest: {
         // 传递当前的筛选条件
         name: searchForm.name || null,
+        age: searchForm.age || null,
+        genderId: searchForm.genderId || null,
         idCard: searchForm.idCard || null,
         phone: searchForm.phone || null,
-        gender: searchForm.gender || null,
-        status: searchForm.status || null,
+        statusId: searchForm.statusId || null,
         minAmount: searchForm.minAmount || null,
         maxAmount: searchForm.maxAmount || null,
         paidDateStart: searchForm.paidDateStart || null,
@@ -1357,11 +1361,11 @@ const handleConfirmExport = async () => {
 
 // 模板生成相关方法
 const handleGenerateTemplate = () => {
-  // 生成默认文件名
+  // 生成带时间戳的文件名
   const now = new Date()
   const timestamp = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_')
-  templatePathForm.filename = `模板_党费缴纳记录导入模板`
-  templatePathForm.sheetName = '模板_党费缴纳记录'
+  templatePathForm.filename = `党费缴纳记录导入模板_${timestamp}`
+  templatePathForm.sheetName = '党费缴纳记录'
   templatePathDialogVisible.value = true
 }
 
@@ -1370,7 +1374,16 @@ const handleTemplatePathClose = () => {
   templatePathDialogVisible.value = false
   templatePathForm.directory = ''
   templatePathForm.filename = ''
-  templatePathForm.sheetName = '模板_党费缴纳记录'
+  templatePathForm.sheetName = '党费缴纳记录'
+}
+
+const handleTemplateFilenameChange = (value) => {
+  // 确保文件名不包含非法字符
+  const cleanFilename = value.replace(/[<>:"/\\|?*]/g, '_')
+  if (cleanFilename !== value) {
+    templatePathForm.filename = cleanFilename
+    ElMessage.warning('文件名包含非法字符，已自动替换为下划线')
+  }
 }
 
 const handleSelectTemplateDirectory = () => {
@@ -1417,32 +1430,20 @@ const showTemplatePathInputDialog = () => {
   })
 }
 
-const handleTemplateFilenameChange = (value) => {
-  // 确保文件名不包含非法字符
-  const cleanFilename = value.replace(/[<>:"/\\|?*]/g, '_')
-  if (cleanFilename !== value) {
-    templatePathForm.filename = cleanFilename
-    ElMessage.warning('文件名包含非法字符，已自动替换为下划线')
-  }
-}
 
 const handleConfirmTemplateExport = async () => {
   if (!templatePathForm.directory) {
     ElMessage.warning('请选择保存目录')
     return
   }
-  
-  if (!templatePathForm.filename) {
-    ElMessage.warning('请输入文件名')
-    return
-  }
-  
+
+
   exportLoading.value = true
   try {
-    // 生成完整路径
-    const filename = templatePathForm.filename.endsWith('.xlsx') ? templatePathForm.filename : `${templatePathForm.filename}.xlsx`
+    // 使用表单中的文件名和工作表名称
+    const filename = `${templatePathForm.filename}.xlsx`
     const fullPath = `${templatePathForm.directory}/${filename}`
-    
+
     // 构建模板生成请求数据
     const templateData = {
       savepath: fullPath,
@@ -1639,13 +1640,192 @@ onMounted(async () => {
   gap: 12px;
 }
 
-/* 模板路径选择对话框样式 */
-.template-path-dialog .template-path-container {
-  padding: 20px 0;
+
+/* 统一路径选择对话框样式 */
+.path-dialog .el-dialog {
+  max-height: 80vh !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: calc(50% + 120px) !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 2000 !important;
 }
 
-.template-path-form {
-  margin-bottom: 30px;
+.path-dialog .el-dialog__body {
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+  padding: 20px !important;
+  position: relative !important;
+}
+
+.path-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.path-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.path-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.path-input {
+  flex: 1;
+}
+
+.filename-preview {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #e3f2fd;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #1976d2;
+  border-left: 3px solid #2196f3;
+  word-break: break-all;
+}
+
+.path-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e7ed;
+}
+
+.path-actions .el-button {
+  min-width: 100px;
+  height: 36px;
+}
+
+.path-tips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f0f9ff;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #409eff;
+  border-left: 3px solid #409eff;
+}
+
+.path-tips .el-icon {
+  font-size: 14px;
+}
+
+/* 路径选择对话框样式 */
+.path-select-dialog .el-message-box {
+  width: 500px !important;
+  border-radius: 12px !important;
+}
+
+.path-select-dialog .el-message-box__header {
+  background: linear-gradient(135deg, #409eff 0%, #66b3ff 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+  padding: 20px 24px;
+}
+
+.path-select-dialog .el-message-box__title {
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.path-select-dialog .el-message-box__headerbtn .el-message-box__close {
+  color: white;
+  font-size: 20px;
+}
+
+.path-select-dialog .el-message-box__content {
+  padding: 24px;
+  background: #f8f9fa;
+}
+
+.path-select-dialog .el-message-box__message {
+  margin-bottom: 16px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.path-select-dialog .el-textarea__inner {
+  border-radius: 8px;
+  border: 2px solid #e4e7ed;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+  transition: all 0.3s ease;
+}
+
+.path-select-dialog .el-textarea__inner:focus {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+}
+
+.path-select-dialog .el-message-box__btns {
+  padding: 16px 24px 24px;
+  background: white;
+  border-radius: 0 0 12px 12px;
+}
+
+.path-select-dialog .el-button {
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 10px 24px;
+}
+
+.path-select-dialog .el-button--primary {
+  background: #409eff;
+  border-color: #409eff;
+}
+
+.path-select-dialog .el-button--primary:hover {
+  background: #66b3ff;
+  border-color: #66b3ff;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .path-dialog .el-dialog {
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 95% !important;
+  }
+
+  .path-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .path-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .path-actions .el-button {
+    width: 100%;
+  }
+
+  .path-form {
+    padding: 16px;
+  }
+
+  .path-tips {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
 }
 
 /* 工具栏样式 */

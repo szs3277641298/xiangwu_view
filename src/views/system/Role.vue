@@ -43,10 +43,12 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" icon="Search">
+          <el-button type="primary" @click="handleSearch">
+            <el-icon><Search /></el-icon>
             搜索
           </el-button>
-          <el-button @click="handleReset" icon="Refresh">
+          <el-button @click="handleReset">
+            <el-icon><Refresh /></el-icon>
             重置
           </el-button>
         </el-form-item>
@@ -57,10 +59,12 @@
     <el-card class="table-card" shadow="never">
       <div class="table-header">
         <div class="table-actions">
-          <el-button type="primary" @click="handleAddRole" icon="Plus">
+          <el-button type="primary" @click="handleAddRole">
+            <el-icon><Plus /></el-icon>
             新增角色
           </el-button>
-          <el-button @click="handleExport" icon="Download">
+          <el-button @click="handleExport">
+            <el-icon><Download /></el-icon>
             导出数据
           </el-button>
         </div>
@@ -77,6 +81,7 @@
             <div class="role-info">
               <div class="role-name">{{ role.name }}</div>
               <div class="role-id">ID: {{ role.id }}</div>
+              <div class="role-code" v-if="role.roleCode">{{ role.roleCode }}</div>
             </div>
           </div>
           
@@ -121,6 +126,14 @@
         <div class="form-row">
           <el-form-item label="角色名称" prop="name">
             <el-input v-model="formData.name" placeholder="请输入角色名称" />
+          </el-form-item>
+          <el-form-item label="角色代码" prop="roleCode">
+            <el-input 
+              v-model="formData.roleCode" 
+              placeholder="请输入角色代码，如：VILLAGER"
+              @input="handleRoleCodeInput"
+            />
+            <div class="form-tip">输入的角色代码将自动转换为大写并添加ROLE_前缀</div>
           </el-form-item>
         </div>
         <div class="form-row">
@@ -171,6 +184,7 @@ const searchForm = reactive({
 const formData = reactive({
   id: null,
   name: '',
+  roleCode: '',
   description: ''
 })
 
@@ -179,9 +193,28 @@ const formRules = {
   name: [
     { required: true, message: '请输入角色名称', trigger: 'blur' }
   ],
+  roleCode: [
+    { required: true, message: '请输入角色代码', trigger: 'blur' },
+    { pattern: /^[A-Z_]+$/, message: '角色代码只能包含大写字母和下划线', trigger: 'blur' }
+  ],
   description: [
     { required: true, message: '请输入角色描述', trigger: 'blur' }
   ]
+}
+
+// 处理角色代码输入
+const handleRoleCodeInput = (value) => {
+  // 移除已存在的ROLE_前缀（如果存在）
+  let cleanValue = value.replace(/^ROLE_/i, '')
+  
+  // 转换为大写
+  cleanValue = cleanValue.toUpperCase()
+  
+  // 只允许字母和下划线
+  cleanValue = cleanValue.replace(/[^A-Z_]/g, '')
+  
+  // 添加ROLE_前缀
+  formData.roleCode = 'ROLE_' + cleanValue
 }
 
 // 格式化日期
@@ -249,6 +282,7 @@ const handleAddRole = () => {
   Object.assign(formData, {
     id: null,
     name: '',
+    roleCode: '',
     description: ''
   })
   dialogVisible.value = true
@@ -260,6 +294,7 @@ const handleEditRole = (row) => {
   Object.assign(formData, {
     id: row.id,
     name: row.name,
+    roleCode: row.roleCode || '',
     description: row.description || ''
   })
   dialogVisible.value = true
@@ -473,6 +508,18 @@ onMounted(() => {
   padding: 2px 8px;
   border-radius: 4px;
   display: inline-block;
+  margin-bottom: 4px;
+}
+
+.role-code {
+  font-size: 12px;
+  color: #409eff;
+  background: #e6f7ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
 }
 
 
@@ -640,5 +687,12 @@ onMounted(() => {
     flex-direction: column;
     gap: 8px;
   }
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 </style>

@@ -10,6 +10,14 @@
       </div>
       
       <div class="toolbar-actions">
+        <el-button type="warning" @click="handleImport">
+          <el-icon><Upload /></el-icon>
+          导入数据
+        </el-button>
+        <el-button type="info" @click="handleGenerateTemplate">
+          <el-icon><Document /></el-icon>
+          导出模板
+        </el-button>
         <el-button type="success" @click="handleExport">
           <el-icon><Download /></el-icon>
           导出数据
@@ -143,9 +151,13 @@
                   />
                 </el-form-item>
                 <el-form-item label="性别">
-                  <el-select v-model="searchForm.gender" placeholder="请选择性别" clearable class="form-select">
-                    <el-option label="男" value="MALE" />
-                    <el-option label="女" value="FEMALE" />
+                  <el-select v-model="searchForm.genderId" placeholder="请选择性别" clearable class="form-select">
+                    <el-option 
+                      v-for="option in genderOptions" 
+                      :key="option.id" 
+                      :label="option.name" 
+                      :value="option.id" 
+                    />
                   </el-select>
                 </el-form-item>
                 <el-form-item label="年龄范围">
@@ -221,18 +233,35 @@
               <div class="form-grid">
                 <el-form-item label="开始时间">
                   <el-date-picker
-                    v-model="searchForm.startDate"
+                    v-model="searchForm.startDateStart"
                     type="date"
-                    placeholder="选择开始时间"
+                    placeholder="开始时间范围-开始"
+                    
+                    clearable
+                    class="form-date-picker"
+                  />
+                  <span style="margin: 0 8px">-</span>
+                  <el-date-picker
+                    v-model="searchForm.startDateEnd"
+                    type="date"
+                    placeholder="开始时间范围-结束"
                     clearable
                     class="form-date-picker"
                   />
                 </el-form-item>
                 <el-form-item label="结束时间">
                   <el-date-picker
-                    v-model="searchForm.endDate"
+                    v-model="searchForm.endDateStart"
                     type="date"
-                    placeholder="选择结束时间"
+                    placeholder="结束时间范围-开始"
+                    clearable
+                    class="form-date-picker"
+                  />
+                  <span style="margin: 0 8px">-</span>
+                  <el-date-picker
+                    v-model="searchForm.endDateEnd"
+                    type="date"
+                    placeholder="结束时间范围-结束"
                     clearable
                     class="form-date-picker"
                   />
@@ -690,6 +719,88 @@
       </template>
     </el-dialog>
 
+    <!-- 批量导入对话框 -->
+    <el-dialog v-model="importDialogVisible" title="批量导入集体经济数据" width="500px" :before-close="handleImportClose" center :modal="true" :close-on-click-modal="false" :close-on-press-escape="true" class="import-dialog">
+      <el-upload
+        ref="importUploadRef"
+        :auto-upload="false"
+        :on-change="handleImportFileChange"
+        :before-upload="beforeUpload"
+        accept=".xlsx,.xls"
+        drag
+      >
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">
+          将文件拖到此处，或<em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            只能上传 xlsx/xls 文件，且不超过 10MB
+          </div>
+        </template>
+      </el-upload>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="importDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleImportSubmit" :loading="importLoading">确定导入</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 生成模板路径选择对话框 -->
+    <el-dialog
+      v-model="generateTemplateDialogVisible"
+      title="选择模板文件保存路径"
+      width="500px"
+      :before-close="handleGenerateTemplateClose"
+      class="path-dialog"
+      center
+      :modal="true"
+      :close-on-click-modal="false"
+      :close-on-press-escape="true"
+    >
+      <div class="path-container">
+        <div class="path-form">
+          <el-form :model="generateTemplateForm" label-width="120px">
+            <el-form-item label="保存路径" required>
+              <div class="path-input-group">
+                <el-input
+                  v-model="generateTemplateForm.directory"
+                  placeholder="请选择保存目录"
+                  class="path-input"
+                  readonly
+                  @click="handleSelectGenerateTemplateDirectory"
+                />
+                <el-button @click="handleSelectGenerateTemplateDirectory" type="primary">
+                  <el-icon><FolderOpened /></el-icon>
+                  浏览文件夹
+                </el-button>
+              </div>
+              <div class="path-tips">
+                <el-icon><InfoFilled /></el-icon>
+                <span>由于浏览器安全限制，无法直接获取完整路径，请手动输入保存目录的完整路径</span>
+              </div>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <div class="path-actions">
+          <el-button @click="handleGenerateTemplateClose">取消</el-button>
+          <el-button type="primary" @click="handleConfirmGenerateTemplate" :loading="exportLoading">
+            <el-icon><Document /></el-icon>
+            确认生成
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 导入结果详情对话框 -->
+    <ImportResultDialog
+      v-model="importResultDialogVisible"
+      :result-data="importResultData"
+      @refresh="loadTableData"
+    />
+
     <!-- 导出数据对话框 -->
     <el-dialog
       v-model="exportDialogVisible"
@@ -786,11 +897,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { Search, Plus, List, Money, PieChart, Filter, Refresh, InfoFilled, ArrowDown, ArrowUp, Briefcase, Calendar, User, Loading, Download, FolderOpened, TrendCharts, DataAnalysis } from '@element-plus/icons-vue'
+import { Search, Plus, List, Money, PieChart, Filter, Refresh, InfoFilled, ArrowDown, ArrowUp, Briefcase, Calendar, User, Loading, Download, FolderOpened, TrendCharts, DataAnalysis, Upload, Document, UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../store/index.js'
-import { economyAPI, residentAPI, dictAPI } from '../../api/api.js'
+import { economyAPI, economyExcelAPI, residentAPI, dictAPI } from '../../api/api.js'
 import * as echarts from 'echarts'
+import ImportResultDialog from '../../components/ImportResultDialog.vue'
 
 // 用户状态
 const userStore = useUserStore()
@@ -823,8 +935,10 @@ const searchForm = reactive({
   maxInvestment: '',
   minAnnualRevenue: '',
   maxAnnualRevenue: '',
-  startDate: '',
-  endDate: '',
+  startDateStart: null,
+  startDateEnd: null,
+  endDateStart: null,
+  endDateEnd: null,
   minAge: '',
   maxAge: '',
   genderId: null
@@ -879,9 +993,22 @@ let typeChart = null
 let investmentChart = null
 let returnRateChart = null
 
+// 导入相关
+const importDialogVisible = ref(false)
+const importLoading = ref(false)
+const selectedFile = ref(null)
+const importResultDialogVisible = ref(false)
+const importResultData = ref({})
+
 // 导出相关
 const exportDialogVisible = ref(false)
 const exportLoading = ref(false)
+
+// 生成模板相关
+const generateTemplateDialogVisible = ref(false)
+const generateTemplateForm = reactive({
+  directory: ''
+})
 
 // 路径选择相关
 const pathDialogVisible = ref(false)
@@ -896,23 +1023,27 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref(null)
+
+// 上传组件引用（用于导入对话框）
+const importUploadRef = ref(null)
 const formData = reactive({
-  id: null,                    // 项目ID（编辑时使用）
-  objectName: '',              // 项目名称
-  managerResidentId: null,     // 项目负责人ID
-  typeId: null,                // 项目类型（Integer，字典ID）
-  investment: null,            // 项目投资（BigDecimal -> Number）
-  annualRevenue: null,         // 项目年收入（BigDecimal -> Number）
-  address: '',                 // 项目地址
-  statusId: null,              // 项目状态（Integer，字典ID）
-  startDate: null,             // 开始时间（Date）
-  endDate: null                // 结束时间（Date）
+  id: null,                    // 项目ID（Long）
+  objectName: '',              // 项目名称（String）
+  managerResidentId: null,     // 项目负责人居民ID（Long）
+  typeId: null,                // 项目类型ID（Integer）
+  investment: 0,               // 项目投资（BigDecimal，转为数字）
+  annualRevenue: 0,            // 项目年收入（BigDecimal，转为数字）
+  address: '',                 // 项目地址（String）
+  statusId: null,              // 项目状态ID（Integer）
+  startDate: null,             // 开始时间（LocalDate）
+  endDate: null                // 结束时间（LocalDate）
 })
 
 // 表单验证规则
 const formRules = {
   objectName: [
-    { required: true, message: '请输入项目名称', trigger: 'blur' }
+    { required: true, message: '请输入项目名称', trigger: 'blur' },
+    { min: 2, max: 100, message: '项目名称长度在2到100个字符', trigger: 'blur' }
   ],
   managerResidentId: [
     { required: true, message: '请选择项目负责人', trigger: 'change' }
@@ -921,7 +1052,8 @@ const formRules = {
     { required: true, message: '请选择项目类型', trigger: 'change' }
   ],
   address: [
-    { required: true, message: '请输入项目地址', trigger: 'blur' }
+    { required: true, message: '请输入项目地址', trigger: 'blur' },
+    { min: 5, max: 200, message: '项目地址长度在5到200个字符', trigger: 'blur' }
   ],
   investment: [
     { required: true, message: '请输入投资金额', trigger: 'blur' },
@@ -1338,8 +1470,23 @@ const handleAdvancedSearch = () => {
 }
 
 const handleReset = () => {
-  Object.keys(searchForm).forEach(key => {
-    searchForm[key] = ''
+  Object.assign(searchForm, {
+    objectName: '',
+    typeId: null,
+    statusId: null,
+    managerName: '',
+    address: '',
+    minInvestment: '',
+    maxInvestment: '',
+    minAnnualRevenue: '',
+    maxAnnualRevenue: '',
+    startDateStart: null,
+    startDateEnd: null,
+    endDateStart: null,
+    endDateEnd: null,
+    minAge: '',
+    maxAge: '',
+    genderId: null
   })
   currentPage.value = 1
   loadTableData()
@@ -1389,20 +1536,20 @@ const handleEditFromDetail = () => {
 // 新增项目
 const handleAddProject = () => {
   isEdit.value = false
-  // 重置表单数据为初始值
+  // 重置表单数据为初始值，与后端DTO类型匹配
   Object.keys(formData).forEach(key => {
     if (key === 'id') {
-      formData[key] = null
+      formData[key] = null  // Long类型，设为null
     } else if (key === 'managerResidentId') {
-      formData[key] = null
+      formData[key] = null  // Long类型，设为null
     } else if (key === 'typeId' || key === 'statusId') {
-      formData[key] = null  // 枚举字段设为null
+      formData[key] = null  // Integer类型，设为null
     } else if (key === 'investment' || key === 'annualRevenue') {
-      formData[key] = null  // 数字字段设为null
+      formData[key] = 0     // BigDecimal类型，前端用数字0表示
     } else if (key === 'startDate' || key === 'endDate') {
-      formData[key] = null  // 日期字段设为null
+      formData[key] = null  // LocalDate类型，设为null
     } else {
-      formData[key] = ''    // 字符串字段设为空字符串
+      formData[key] = ''    // String类型，设为空字符串
     }
   })
   // 清空村民选择
@@ -1420,14 +1567,44 @@ const handleEditProject = async (row) => {
     if (response.code === 200) {
       Object.assign(formData, response.data)
       
-      // 处理时间字段
-      if (formData.startTime) {
-        const timestamp = typeof formData.startTime === 'number' ? formData.startTime : new Date(formData.startTime).getTime()
-        formData.startDate = new Date(timestamp)
+      // 处理日期字段 - 后端返回的是 LocalDateTime 格式，但前端只需日期部分
+      if (formData.startDate) {
+        try {
+          if (typeof formData.startDate === 'string') {
+            if (formData.startDate.includes(' ')) {
+              // 如果是 yyyy-MM-dd HH:mm:ss 格式，取日期部分
+              formData.startDate = new Date(formData.startDate.split(' ')[0])
+            } else {
+              // 如果已经是 yyyy-MM-dd 格式，直接解析
+              formData.startDate = new Date(formData.startDate)
+            }
+          } else {
+            // 如果是其他格式，尝试解析
+            formData.startDate = new Date(formData.startDate)
+          }
+        } catch (error) {
+          console.error('开始日期解析错误:', error)
+          formData.startDate = null
+        }
       }
-      if (formData.endTime) {
-        const timestamp = typeof formData.endTime === 'number' ? formData.endTime : new Date(formData.endTime).getTime()
-        formData.endDate = new Date(timestamp)
+      if (formData.endDate) {
+        try {
+          if (typeof formData.endDate === 'string') {
+            if (formData.endDate.includes(' ')) {
+              // 如果是 yyyy-MM-dd HH:mm:ss 格式，取日期部分
+              formData.endDate = new Date(formData.endDate.split(' ')[0])
+            } else {
+              // 如果已经是 yyyy-MM-dd 格式，直接解析
+              formData.endDate = new Date(formData.endDate)
+            }
+          } else {
+            // 如果是其他格式，尝试解析
+            formData.endDate = new Date(formData.endDate)
+          }
+        } catch (error) {
+          console.error('结束日期解析错误:', error)
+          formData.endDate = null
+        }
       }
       
       // 处理负责人信息
@@ -1527,29 +1704,38 @@ const handleSubmit = async () => {
       Object.assign(submitData, filteredData)
     }
     
-    // 确保数字字段为数字类型（Integer 和 BigDecimal）
+    // 确保字段类型与后端DTO匹配
+    // Long类型字段
+    if (submitData.id) {
+      submitData.id = Number(submitData.id)
+    }
     if (submitData.managerResidentId) {
       submitData.managerResidentId = Number(submitData.managerResidentId)
     }
+
+    // Integer类型字段
     if (submitData.typeId) {
       submitData.typeId = Number(submitData.typeId)
     }
     if (submitData.statusId) {
       submitData.statusId = Number(submitData.statusId)
     }
-    if (submitData.investment) {
+
+    // BigDecimal类型字段（前端用数字表示）
+    if (submitData.investment !== null && submitData.investment !== undefined) {
       submitData.investment = Number(submitData.investment)
     }
-    if (submitData.annualRevenue) {
+    if (submitData.annualRevenue !== null && submitData.annualRevenue !== undefined) {
       submitData.annualRevenue = Number(submitData.annualRevenue)
     }
     
-    // 处理日期字段 - 转换为 yyyy-MM-dd 格式
+    // 处理日期字段 - 只保留日期部分（LocalDate类型）
     if (submitData.startDate) {
       const date = new Date(submitData.startDate)
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
+      // 只保留日期部分，格式为 yyyy-MM-dd（LocalDate期望的格式）
       submitData.startDate = `${year}-${month}-${day}`
     }
     if (submitData.endDate) {
@@ -1557,6 +1743,7 @@ const handleSubmit = async () => {
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
+      // 只保留日期部分，格式为 yyyy-MM-dd（LocalDate期望的格式）
       submitData.endDate = `${year}-${month}-${day}`
     }
     
@@ -1590,6 +1777,171 @@ const handleSubmit = async () => {
   } finally {
     submitLoading.value = false
   }
+}
+
+// 导入相关方法
+const handleImport = () => {
+  importDialogVisible.value = true
+}
+
+// 生成模板相关方法
+const handleGenerateTemplate = () => {
+  generateTemplateDialogVisible.value = true
+}
+
+const handleSelectGenerateTemplateDirectory = () => {
+  showGenerateTemplatePathInputDialog()
+}
+
+const showGenerateTemplatePathInputDialog = () => {
+  // 创建自定义的路径选择对话框
+  ElMessageBox({
+    title: '选择模板文件保存路径',
+    message: '由于浏览器安全限制，无法直接获取完整路径，请手动输入保存目录的完整路径',
+    showCancelButton: true,
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    customClass: 'path-select-dialog',
+    showInput: true,
+    inputValue: generateTemplateForm.directory || 'D:\\',
+    inputPlaceholder: '例如：D:\\Documents\\Templates',
+    inputType: 'textarea',
+    inputValidator: (value) => {
+      if (!value || value.trim() === '') {
+        return '请输入有效的目录路径'
+      }
+      // 简单的路径格式验证
+      const trimmedValue = value.trim()
+      if (trimmedValue.includes('..') || trimmedValue.includes('//')) {
+        return '请输入正确的目录路径'
+      }
+      return true
+    },
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        const value = instance.inputValue
+        if (value) {
+          const trimmedPath = value.trim()
+          // 确保路径格式正确
+          let finalPath = trimmedPath
+          if (finalPath.endsWith('\\') || finalPath.endsWith('/')) {
+            finalPath = finalPath.slice(0, -1)
+          }
+          generateTemplateForm.directory = finalPath
+        }
+      }
+      done()
+    }
+  })
+}
+
+const handleConfirmGenerateTemplate = async () => {
+  if (!generateTemplateForm.directory) {
+    ElMessage.warning('请选择保存目录')
+    return
+  }
+
+  try {
+    exportLoading.value = true
+
+    // 生成时间戳
+    const now = new Date()
+    const timestamp = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_')
+    
+    // 生成完整路径，文件名包含时间戳
+    const fullPath = `${generateTemplateForm.directory}/集体经济导入模板_${timestamp}.xlsx`
+
+    // 构建请求参数，只需要保存路径
+    const request = {
+      savepath: fullPath
+    }
+
+    console.log('生成说明参数:', request)
+
+    // 调用生成说明接口
+    const response = await economyExcelAPI.generateTemplate(request)
+
+    console.log('后端响应:', response)
+
+    // 由于API设置了responseType: 'blob'，成功时返回的是blob数据
+    // 如果请求成功，说明文件已经生成
+    ElMessage.success(`模板文件已生成到：${fullPath}`)
+    generateTemplateDialogVisible.value = false
+  } catch (error) {
+    console.error('生成模板失败:', error)
+    ElMessage.error('生成模板失败，请稍后重试')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+const handleGenerateTemplateClose = () => {
+  generateTemplateDialogVisible.value = false
+  generateTemplateForm.directory = ''
+}
+
+// 导入相关方法
+const handleImportFileChange = (file) => {
+  selectedFile.value = file.raw
+}
+
+const beforeUpload = (file) => {
+  const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                  file.type === 'application/vnd.ms-excel'
+  if (!isExcel) {
+    ElMessage.error('只能上传 Excel 文件!')
+    return false
+  }
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return false
+  }
+  return true
+}
+
+const handleImportSubmit = async () => {
+  if (!selectedFile.value) {
+    ElMessage.warning('请选择要导入的文件')
+    return
+  }
+
+  importLoading.value = true
+  try {
+    const response = await economyExcelAPI.importEconomy(selectedFile.value)
+    if (response.code === 200) {
+      // 解析导入结果
+      importResultData.value = response
+
+      // 关闭导入对话框
+      importDialogVisible.value = false
+      selectedFile.value = null
+      importUploadRef.value?.clearFiles()
+
+      // 显示导入结果详情对话框
+      importResultDialogVisible.value = true
+
+      // 如果有成功导入的数据，刷新列表
+      if (response.success > 0) {
+        loadTableData()
+        if (currentView.value === 'dashboard') {
+          loadStatsData()
+        }
+      }
+    } else {
+      ElMessage.error(response.message || '导入失败，请重试')
+    }
+  } catch (error) {
+    console.error('导入失败:', error)
+    ElMessage.error('导入失败，请稍后重试')
+  } finally {
+    importLoading.value = false
+  }
+}
+
+const handleImportClose = () => {
+  importDialogVisible.value = false
+  selectedFile.value = null
 }
 
 // 点击外部关闭搜索结果
@@ -1705,7 +2057,7 @@ const handleConfirmExport = async () => {
     console.log('查询参数:', queryRequest)
     
     // 调用后端导出接口
-    const response = await economyAPI.exportEconomy(exportRequest, queryRequest)
+    const response = await economyExcelAPI.exportEconomy(exportRequest, queryRequest)
     
     if (response.code === 200) {
       ElMessage.success(`Excel文件已导出到：${fullPath.value}`)

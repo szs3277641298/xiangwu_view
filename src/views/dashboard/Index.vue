@@ -3,12 +3,12 @@
     <div class="dashboard-header">
       <div class="header-content">
         <div class="header-actions">
-          <el-button 
-            type="primary" 
+          <el-button
+            type="primary"
             size="large"
             @click="goToDataScreen"
-            icon="el-icon-data-board"
           >
+            <el-icon><DataBoard /></el-icon>
             数据大屏
           </el-button>
         </div>
@@ -28,8 +28,7 @@
       
       <el-card class="stat-card clickable" @click="handleCardClick('economy')">
         <div class="stat-content">
-          <div class="stat-number">¥234,567</div>
-          <div class="stat-label">集体经济收入</div>
+          <h3>集体经济总览</h3>
         </div>
         <div class="stat-icon">
           <el-icon><Money /></el-icon>
@@ -46,15 +45,7 @@
         </div>
       </el-card>
       
-      <el-card class="stat-card clickable" @click="handleCardClick('floating')">
-        <div class="stat-content">
-          <div class="stat-number">{{ floatingPopulationCount }}</div>
-          <div class="stat-label">流动人口</div>
-        </div>
-        <div class="stat-icon">
-          <el-icon><RefreshRight /></el-icon>
-        </div>
-      </el-card>
+
     </div>
     
     <div class="dashboard-charts">
@@ -255,7 +246,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { User, Money, Flag, RefreshRight, Refresh } from '@element-plus/icons-vue'
+import { User, Money, Flag, RefreshRight, Refresh, DataBoard } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/index.js'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -371,7 +362,7 @@ const goToDataScreen = () => {
 const loadPopulationData = async () => {
   loading.value = true
   try {
-    const response = await bigScreenAPI.getPopulationStructure()
+    const response = await bigScreenAPI.getPopulationByAge()
     if (response.code === 200) {
       // 映射后端数据结构到前端期望的格式
       populationData.value = {
@@ -567,7 +558,7 @@ const refreshWelfareStatusData = () => {
 const loadBooleanCountData = async () => {
   booleanCountLoading.value = true
   try {
-    const response = await bigScreenAPI.getBooleanCount()
+    const response = await bigScreenAPI.getBoolenCount()
     if (response.code === 200) {
       booleanCountData.value = response.data || []
       

@@ -118,10 +118,7 @@
     <!-- 工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <el-button type="success" v-if="isAdmin" @click="handleBatchImport">
-          <el-icon><Upload /></el-icon>
-          批量导入
-        </el-button>
+
         <el-button type="primary" @click="handleAddTransaction">
           <el-icon><Plus /></el-icon>
           新增收支记录
@@ -130,10 +127,7 @@
           <el-icon><Download /></el-icon>
           导出数据
         </el-button>
-        <el-button type="info" @click="handleGenerateTemplate">
-          <el-icon><Document /></el-icon>
-          生成模板
-        </el-button>
+
       </div>
     </div>
     
@@ -163,9 +157,9 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="date" label="收支日期" min-width="120">
+        <el-table-column prop="date" label="收支日期" min-width="160">
           <template #default="{ row }">
-            {{ formatDate(row.date) }}
+            {{ formatDateTime(row.date) }}
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="200">
@@ -304,7 +298,13 @@
         </div>
         <div class="form-row">
           <el-form-item label="收支日期" prop="date">
-            <el-date-picker v-model="formData.date" type="date" placeholder="请选择收支日期" />
+            <el-date-picker 
+              v-model="formData.date" 
+              type="datetime" 
+              placeholder="请选择收支日期和时间"
+              format="YYYY-MM-DD HH:mm:ss"
+              value-format="YYYY-MM-DD HH:mm:ss"
+            />
           </el-form-item>
         </div>
         <el-form-item label="描述" prop="description">
@@ -662,20 +662,38 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
-// 格式化日期为后端期望的格式 (yyyy-MM-dd)
+// 格式化日期为后端期望的格式 (yyyy-MM-dd HH:mm:ss)
 const formatDateForBackend = (date) => {
   if (!date) return null
+  // 如果已经是字符串格式，直接返回
+  if (typeof date === 'string') {
+    return date
+  }
+  // 如果是Date对象，转换为字符串格式
   const dateObj = new Date(date)
   const year = dateObj.getFullYear()
   const month = String(dateObj.getMonth() + 1).padStart(2, '0')
   const day = String(dateObj.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const hours = String(dateObj.getHours()).padStart(2, '0')
+  const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+  const seconds = String(dateObj.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 // 格式化日期时间
 const formatDateTime = (dateTime) => {
   if (!dateTime) return '-'
-  return new Date(dateTime).toLocaleString('zh-CN')
+  try {
+    // 如果是字符串格式，直接显示
+    if (typeof dateTime === 'string') {
+      return dateTime
+    }
+    // 如果是Date对象，转换为本地格式
+    return new Date(dateTime).toLocaleString('zh-CN')
+  } catch (error) {
+    console.error('日期时间格式化错误:', error)
+    return '-'
+  }
 }
 
 // 项目搜索方法
@@ -890,7 +908,25 @@ const handleEdit = async (row) => {
   formData.projectId = row.projectId
   formData.payTypeId = row.payTypeId
   formData.amount = row.amount
-  formData.date = row.date
+  
+  // 处理日期格式 - 后端返回的是 yyyy-MM-dd HH:mm:ss 格式
+  if (row.date) {
+    try {
+      if (typeof row.date === 'string') {
+        // 直接使用字符串格式，Element Plus的datetime选择器支持这种格式
+        formData.date = row.date
+      } else {
+        // 如果是其他格式，尝试解析
+        formData.date = new Date(row.date)
+      }
+    } catch (error) {
+      console.error('收支日期解析错误:', error)
+      formData.date = null
+    }
+  } else {
+    formData.date = null
+  }
+  
   formData.description = row.description || ''
   formData.createTime = row.createTime
   

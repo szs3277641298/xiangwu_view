@@ -1,196 +1,118 @@
 <template>
   <div class="user-center">
-    <!-- 页面标题 -->
-    <div class="page-title">
-      <h2>个人中心</h2>
-      <p>管理您的个人信息和账户设置</p>
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="title-section">
+          <h2 class="page-title">
+            <el-icon class="title-icon"><User /></el-icon>
+            个人中心
+          </h2>
+          <p class="page-description">管理您的个人信息和账户设置</p>
+        </div>
+      </div>
     </div>
     
     <!-- 用户信息卡片 -->
-    <div class="user-info-card">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <div class="avatar-container">
-            <el-avatar :size="120" class="user-avatar">
-              <span>{{ username.substring(0, 2) }}</span>
-            </el-avatar>
-          </div>
-        </el-col>
-        
-        <el-col :span="18">
+    <el-card class="user-card" shadow="never">
+      <div class="user-info-content">
+        <div class="user-info">
+          <h3 class="username">{{ userInfo.username || '未知用户' }}</h3>
           <div class="user-details">
-            <h3>{{ username }}</h3>
-            <p class="user-role">{{ roleName }}</p>
-            <div class="user-meta">
-              <el-tag size="small" v-if="isOnline">在线</el-tag>
-              <span>上次登录: {{ lastLoginTime }}</span>
-              <span>账户ID: {{ userId }}</span>
+            <div class="detail-item">
+              <span class="label">用户ID:</span>
+              <span class="value">{{ userInfo.id || '-' }}</span>
             </div>
-            <el-button type="text" @click="showUserInfoDetail">
-              查看详情 <el-icon><ArrowRight /></el-icon>
-            </el-button>
+            <div class="detail-item">
+              <span class="label">角色:</span>
+              <span class="value">{{ roleName || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">手机号:</span>
+              <span class="value">{{ userInfo.phone || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">创建时间:</span>
+              <span class="value">{{ formatTime(userInfo.createTime) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">状态:</span>
+              <el-tag :type="userInfo.status === 1 ? 'success' : 'danger'" size="small">
+                {{ userInfo.status === 1 ? '正常' : '禁用' }}
+              </el-tag>
+            </div>
           </div>
-        </el-col>
-      </el-row>
-    </div>
-    
-    
-    <!-- 账户设置 -->
-    <div class="account-settings">
-      <el-card>
-        <template #header>
-          <div class="card-header">
-            <span>账户设置</span>
-          </div>
-        </template>
-        
-        <el-tabs v-model="activeTab" type="border-card">
-          <el-tab-pane label="基本信息" name="basic">
-            <el-form :model="userForm" :rules="rules" ref="userFormRef" label-width="120px">
-              <el-row :gutter="20">
-                <el-col :span="12">
-                  <el-form-item label="用户名" prop="username">
-                    <el-input v-model="userForm.username" placeholder="请输入用户名" disabled />
-                  </el-form-item>
-                  
-                  <el-form-item label="用户ID" prop="userId">
-                    <el-input v-model="userForm.userId" placeholder="用户ID" disabled />
-                  </el-form-item>
-                  
-                  <el-form-item label="角色" prop="role">
-                    <el-input v-model="userForm.role" placeholder="角色" disabled />
-                  </el-form-item>
-                </el-col>
-                
-                <el-col :span="12">
-                  <el-form-item label="创建时间" prop="createTime">
-                    <el-input v-model="userForm.createTime" placeholder="创建时间" disabled />
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              
-              <el-form-item>
-                <el-button type="primary" @click="submitUserForm" :loading="loading">保存修改</el-button>
-                <el-button @click="resetUserForm">重置</el-button>
-              </el-form-item>
-            </el-form>
-          </el-tab-pane>
-          
-          <el-tab-pane label="安全设置" name="security">
-            <el-form :model="securityForm" :rules="securityRules" ref="securityFormRef" label-width="120px">
-              <el-form-item label="当前密码" prop="currentPassword">
-                <el-input v-model="securityForm.currentPassword" type="password" placeholder="请输入当前密码" />
-              </el-form-item>
-              
-              <el-form-item label="新密码" prop="newPassword">
-                <el-input v-model="securityForm.newPassword" type="password" placeholder="请输入新密码" />
-              </el-form-item>
-              
-              <el-form-item label="确认新密码" prop="confirmPassword">
-                <el-input v-model="securityForm.confirmPassword" type="password" placeholder="请再次输入新密码" />
-              </el-form-item>
-              
-              <el-form-item>
-                <el-button type="primary" @click="submitSecurityForm" :loading="loading">修改密码</el-button>
-                <el-button @click="resetSecurityForm">重置</el-button>
-              </el-form-item>
-            </el-form>
-          </el-tab-pane>
-          
-          
-        </el-tabs>
-      </el-card>
-    </div>
-    
-    <!-- 用户详情对话框 -->
-    <el-dialog v-model="showUserDetailDialog" title="用户详情" width="600px">
-      <div class="user-detail-info">
-        <div class="detail-row">
-          <span class="detail-label">用户ID:</span>
-          <span class="detail-value">{{ userId }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">用户名:</span>
-          <span class="detail-value">{{ username }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">角色:</span>
-          <span class="detail-value">{{ roleName }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">创建时间:</span>
-          <span class="detail-value">{{ registerTime }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">最后登录:</span>
-          <span class="detail-value">{{ lastLoginTime }}</span>
         </div>
       </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showUserDetailDialog = false">关闭</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    </el-card>
     
+    <!-- 修改密码卡片 -->
+    <el-card class="password-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>修改密码</span>
+        </div>
+      </template>
+      
+      <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
+        <el-form-item label="当前密码" prop="currentPassword">
+          <el-input 
+            v-model="passwordForm.currentPassword" 
+            type="password" 
+            placeholder="请输入当前密码"
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input 
+            v-model="passwordForm.newPassword" 
+            type="password" 
+            placeholder="请输入新密码"
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input 
+            v-model="passwordForm.confirmPassword" 
+            type="password" 
+            placeholder="请再次输入新密码"
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item>
+          <el-button type="primary" @click="submitPassword" :loading="loading">
+            修改密码
+          </el-button>
+          <el-button @click="resetPassword">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
-import { useUserStore } from '../store/index.js'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ArrowRight } from '@element-plus/icons-vue'
-import { userAPI } from '../api/api.js'
-
-const userStore = useUserStore()
+import { User } from '@element-plus/icons-vue'
+import { userAPI, roleAPI } from '../api/api.js'
 
 // 用户信息
-const username = ref('')
-const roleName = ref('')
-const userId = ref('')
-const lastLoginTime = ref('')
-const registerTime = ref('')
+const userInfo = ref({})
+const roleList = ref([])
 const loading = ref(false)
 
-
-// 选项卡
-const activeTab = ref('basic')
-
-
-// 用户表单数据
-const userForm = reactive({
-  username: '',
-  userId: '',
-  role: '',
-  createTime: ''
-})
-
-// 用户表单验证规则
-const rules = {
-  username: [
-    { required: true, message: '用户名不能为空', trigger: 'blur' }
-  ],
-  userId: [
-    { required: true, message: '用户ID不能为空', trigger: 'blur' }
-  ],
-  role: [
-    { required: true, message: '角色不能为空', trigger: 'blur' }
-  ],
-  createTime: [
-    { required: true, message: '创建时间不能为空', trigger: 'blur' }
-  ]
-}
-
-// 安全设置表单
-const securityForm = reactive({
+// 密码修改表单
+const passwordForm = reactive({
   currentPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
 
-// 安全设置表单验证规则
-const securityRules = {
+// 密码修改表单验证规则
+const passwordRules = {
   currentPassword: [
     { required: true, message: '请输入当前密码', trigger: 'blur' },
     { min: 6, max: 20, message: '密码长度在 6 到 20 个字符之间', trigger: 'blur' }
@@ -200,7 +122,7 @@ const securityRules = {
     { min: 6, max: 20, message: '密码长度在 6 到 20 个字符之间', trigger: 'blur' },
     { 
       validator: (rule, value, callback) => {
-        if (value && value === securityForm.currentPassword) {
+        if (value && value === passwordForm.currentPassword) {
           callback(new Error('新密码不能与当前密码相同'))
         } else {
           callback()
@@ -213,7 +135,7 @@ const securityRules = {
     { required: true, message: '请确认新密码', trigger: 'blur' },
     { 
       validator: (rule, value, callback) => {
-        if (value !== securityForm.newPassword) {
+        if (value !== passwordForm.newPassword) {
           callback(new Error('两次输入的密码不一致'))
         } else {
           callback()
@@ -224,82 +146,62 @@ const securityRules = {
   ]
 }
 
-// 对话框状态
-const showUserDetailDialog = ref(false)
-
 // 表单引用
-const userFormRef = ref(null)
-const securityFormRef = ref(null)
+const passwordFormRef = ref(null)
 
+// 计算角色名称
+const roleName = computed(() => {
+  if (!userInfo.value.role || !roleList.value.length) return '未知角色'
+  const role = roleList.value.find(r => r.id === userInfo.value.role)
+  return role ? role.name : '未知角色'
+})
 
-// 显示用户详情
-const showUserInfoDetail = () => {
-  showUserDetailDialog.value = true
+// 格式化时间
+const formatTime = (timestamp) => {
+  if (!timestamp) return '-'
+  return new Date(timestamp).toLocaleString('zh-CN')
 }
 
-
-// 提交用户表单
-const submitUserForm = () => {
-  if (!userFormRef.value) return
+// 提交密码修改
+const submitPassword = async () => {
+  if (!passwordFormRef.value) return
   
-  userFormRef.value.validate((valid) => {
+  passwordFormRef.value.validate(async (valid) => {
     if (valid) {
-      // 这里应该调用更新用户信息的 API
-      // 模拟更新成功
-      ElMessage.success('个人信息更新成功')
-    } else {
-      ElMessage.error('请检查表单信息')
-      return false
-    }
-  })
-}
-
-// 重置用户表单
-const resetUserForm = () => {
-  if (userFormRef.value) {
-    userFormRef.value.resetFields()
-  }
-}
-
-// 提交安全表单
-const submitSecurityForm = async () => {
-  if (!securityFormRef.value) return
-  
-  securityFormRef.value.validate(async (valid) => {
-    if (valid) {
+      loading.value = true
       try {
         const response = await userAPI.updatePassword({
-          oldPassword: securityForm.currentPassword,
-          newPassword: securityForm.newPassword
+          oldPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
         })
         
         if (response.code === 200) {
           ElMessage.success('密码修改成功')
-          resetSecurityForm()
+          resetPassword()
         } else {
           ElMessage.error(response.message || '密码修改失败')
         }
       } catch (error) {
         console.error('密码修改失败:', error)
         ElMessage.error('密码修改失败')
+      } finally {
+        loading.value = false
       }
     } else {
       ElMessage.error('请检查表单信息')
-      return false
     }
   })
 }
 
-// 重置安全表单
-const resetSecurityForm = () => {
-  securityForm.currentPassword = ''
-  securityForm.newPassword = ''
-  securityForm.confirmPassword = ''
-  if (securityFormRef.value) {
-    securityFormRef.value.clearValidate()
+// 重置密码表单
+const resetPassword = () => {
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  if (passwordFormRef.value) {
+    passwordFormRef.value.clearValidate()
   }
 }
-
 
 // 获取用户信息
 const loadUserInfo = async () => {
@@ -307,18 +209,7 @@ const loadUserInfo = async () => {
   try {
     const response = await userAPI.getUserInfo()
     if (response.code === 200) {
-      const userData = response.data
-      username.value = userData.username || ''
-      userId.value = userData.id || ''
-      roleName.value = userData.role === 1 ? '管理员' : '普通用户'
-      registerTime.value = userData.createTime ? new Date(userData.createTime).toLocaleString() : '未知'
-      lastLoginTime.value = '刚刚'
-      
-      // 填充表单数据
-      userForm.username = userData.username || ''
-      userForm.userId = userData.id || ''
-      userForm.role = userData.role === 1 ? '管理员' : '普通用户'
-      userForm.createTime = userData.createTime ? new Date(userData.createTime).toLocaleString() : '未知'
+      userInfo.value = response.data
     } else {
       ElMessage.error(response.message || '获取用户信息失败')
     }
@@ -330,23 +221,24 @@ const loadUserInfo = async () => {
   }
 }
 
+// 获取角色列表
+const loadRoleList = async () => {
+  try {
+    const response = await roleAPI.getSysRoles({})
+    if (response.code === 200) {
+      roleList.value = response.data
+    } else {
+      console.error('获取角色列表失败:', response.message)
+    }
+  } catch (error) {
+    console.error('获取角色列表失败:', error)
+  }
+}
 
 // 组件挂载时
 onMounted(() => {
-  // 抑制 ResizeObserver 错误
-  const resizeObserverError = (e) => {
-    if (e.message === 'ResizeObserver loop completed with undelivered notifications.') {
-      e.stopImmediatePropagation()
-    }
-  }
-  window.addEventListener('error', resizeObserverError)
-  
   loadUserInfo()
-  
-  // 清理事件监听器
-  onUnmounted(() => {
-    window.removeEventListener('error', resizeObserverError)
-  })
+  loadRoleList()
 })
 </script>
 
@@ -357,80 +249,99 @@ onMounted(() => {
   overflow: visible !important;
 }
 
-.page-title {
+/* 页面头部样式 - 与其他页面统一 */
+.page-header {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  color: #303133;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e4e7ed;
+  width: 100%;
+  box-sizing: border-box;
   margin-bottom: 20px;
 }
 
-.page-title h2 {
-  margin: 0;
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.title-section {
+  flex: 1;
+}
+
+.page-title {
+  margin: 0 0 8px 0;
   font-size: 24px;
   font-weight: 600;
   color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.page-title p {
-  margin: 8px 0 0 0;
+.title-icon {
+  font-size: 24px;
+  color: #409eff;
+}
+
+.page-description {
+  margin: 0;
   color: #909399;
   font-size: 14px;
 }
 
 /* 用户信息卡片 */
-.user-info-card {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 24px;
+.user-card {
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.avatar-container {
+.user-info-content {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
 }
 
-.user-avatar {
-  margin-bottom: 16px;
-  background-color: #409eff;
+.user-info {
+  flex: 1;
+  width: 100%;
 }
 
-.change-avatar-btn {
-  width: 120px;
-}
-
-.user-details {
-  padding: 16px 0;
-}
-
-.user-details h3 {
-  margin: 0 0 8px 0;
+.username {
+  margin: 0 0 16px 0;
   font-size: 20px;
   font-weight: 500;
   color: #303133;
 }
 
-.user-role {
-  margin: 0 0 16px 0;
-  color: #606266;
-  font-size: 14px;
+.user-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
 }
 
-.user-meta {
+.detail-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
+  gap: 8px;
+}
+
+.detail-item .label {
+  font-weight: 500;
   color: #909399;
+  min-width: 80px;
 }
 
-.user-meta .el-tag {
-  margin-right: 8px;
+.detail-item .value {
+  color: #303133;
+  font-weight: 500;
 }
 
-
-/* 账户设置 */
-.account-settings {
+/* 修改密码卡片 */
+.password-card {
   margin-bottom: 20px;
 }
 
@@ -438,40 +349,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-
-/* 用户详情对话框 */
-.user-detail-info {
-  padding: 16px 0;
-}
-
-.detail-row {
-  display: flex;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.detail-row:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-
-.detail-label {
-  width: 100px;
-  color: #909399;
-  font-size: 14px;
-}
-
-.detail-value {
-  flex: 1;
+  font-weight: 500;
   color: #303133;
-  font-size: 14px;
 }
-
-
 
 /* 响应式设计 */
 @media (max-width: 768px) {
@@ -479,10 +359,32 @@ onMounted(() => {
     padding: 12px;
   }
   
+  .page-header {
+    padding: 24px 20px;
+  }
   
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  
+  .user-info-content {
+    text-align: center;
+  }
+  
+  .user-details {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* 强制滚动样式 - 确保用户中心可以滚动 */
+@media (max-width: 480px) {
+  .page-header {
+    padding: 20px 16px;
+  }
+}
+
+/* 强制滚动样式 */
 :deep(.content-wrapper) {
   overflow-y: auto !important;
   height: calc(100vh - 60px) !important;
@@ -491,11 +393,6 @@ onMounted(() => {
 }
 
 :deep(.content-wrapper) > * {
-  overflow: visible !important;
-}
-
-/* 确保表格内容可以正常显示 */
-el-table {
   overflow: visible !important;
 }
 </style>

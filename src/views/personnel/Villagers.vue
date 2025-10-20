@@ -287,16 +287,6 @@
                     />
                   </el-select>
                 </el-form-item>
-                <el-form-item label="村委会">
-                  <el-select v-model="searchForm.isVillageCommittee" placeholder="请选择" clearable style="width: 100px">
-                    <el-option 
-                      v-for="option in yesNoOptions" 
-                      :key="option.id" 
-                      :label="option.name" 
-                      :value="option.id" 
-                    />
-                  </el-select>
-                </el-form-item>
                 <el-form-item label="贫困户">
                   <el-select v-model="searchForm.isPoor" placeholder="请选择" clearable style="width: 100px">
                     <el-option 
@@ -482,7 +472,6 @@
           <div class="info-row identity-row" v-if="showFullInfo">
             <div class="identity-tags">
               <el-tag v-if="villager.isVeteran" type="warning" size="small">退役军人</el-tag>
-              <el-tag v-if="villager.isVillageCommittee" type="success" size="small">村委会</el-tag>
               <el-tag v-if="villager.isPoor" type="danger" size="small">贫困户</el-tag>
               <el-tag v-if="villager.isDisabled" type="warning" size="small">残疾人</el-tag>
               <el-tag v-if="villager.isOnlyChildFamily" type="info" size="small">独生子女</el-tag>
@@ -612,9 +601,6 @@
           <el-form-item label="退役军人" prop="isVeteran">
             <el-switch v-model="formData.isVeteran" :active-value="1" :inactive-value="0" />
           </el-form-item>
-          <el-form-item label="是否村委" prop="isVillageCommittee">
-            <el-switch v-model="formData.isVillageCommittee" :active-value="1" :inactive-value="0" />
-          </el-form-item>
         </div>
         
         <!-- 新增字段 -->
@@ -646,14 +632,27 @@
             <el-input v-model="formData.ethnicity" placeholder="请输入民族" />
           </el-form-item>
           <el-form-item label="政治面貌" prop="politicalStatusId">
-            <el-select v-model="formData.politicalStatusId" placeholder="请选择政治面貌" clearable>
-              <el-option 
-                v-for="option in politicalStatusOptions" 
-                :key="option.id" 
-                :label="option.name" 
-                :value="option.id" 
+            <el-select
+              v-model="formData.politicalStatusId"
+              placeholder="请选择政治面貌"
+              clearable
+              :disabled="isPoliticalStatusLocked(formData.politicalStatusId) || (isEdit && isPoliticalStatusLocked(originalPoliticalStatus))"
+            >
+              <el-option
+                v-for="option in availablePoliticalOptions"
+                :key="option.id"
+                :label="option.name"
+                :value="option.id"
               />
             </el-select>
+            <div v-if="isPoliticalStatusLocked(formData.politicalStatusId)" class="political-status-tip">
+              <el-alert
+                type="warning"
+                :closable="false"
+                show-icon
+                :title="`${getPoliticalStatusName(formData.politicalStatusId)}无法通过用户界面修改。请从党员信息库中删除信息。`"
+              />
+            </div>
           </el-form-item>
         </div>
         
@@ -902,6 +901,7 @@
               <el-input
                 v-model="pathForm.sheetName"
                 placeholder="请输入工作表名称"
+                readonly
               />
             </el-form-item>
           </el-form>
@@ -955,6 +955,7 @@
               <el-input
                 v-model="templatePathForm.filename"
                 placeholder="请输入文件名（不含扩展名）"
+                readonly
                 @input="handleTemplateFilenameChange"
               />
             </el-form-item>
@@ -962,6 +963,7 @@
               <el-input
                 v-model="templatePathForm.sheetName"
                 placeholder="请输入工作表名称"
+                readonly
               />
             </el-form-item>
           </el-form>
@@ -1160,14 +1162,6 @@
                 </div>
               </div>
               <div class="detail-form-row">
-                <div class="detail-form-label">是否村委</div>
-                <div class="detail-form-value">
-                  <el-tag :type="selectedVillager.isVillageCommittee ? 'success' : 'info'" size="small">
-                    {{ selectedVillager.isVillageCommittee ? '是' : '否' }}
-                  </el-tag>
-                </div>
-              </div>
-              <div class="detail-form-row">
                 <div class="detail-form-label">是否贫困户</div>
                 <div class="detail-form-value">
                   <el-tag :type="selectedVillager.isPoor ? 'danger' : 'info'" size="small">
@@ -1260,6 +1254,7 @@ import {
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.isAdmin)
 
+
 // 计算完整路径
 const fullPath = computed(() => {
   if (pathForm.directory && pathForm.filename) {
@@ -1296,7 +1291,6 @@ const searchForm = reactive({
   hasSocialSecurity: null,
   hasMedicalInsurance: null,
   isVeteran: null,
-  isVillageCommittee: null,
   participatedProjects: '',      // 参与的项目
   projectPosition: '',            // 项目中的职务
   maritalStatusId: null,
@@ -1632,7 +1626,11 @@ const loadFallbackData = () => {
   ]
   
   politicalStatusOptions.value = [
-    { id: 71, name: '群众' }
+    { id: 71, name: '群众' },
+    { id: 72, name: '中共党员' },
+    { id: 73, name: '共青团员' },
+    { id: 74, name: '预备党员' },
+    { id: 75, name: '入党积极分子' }
   ]
 }
 
@@ -1656,6 +1654,38 @@ const politicalStatusOptions = ref([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
+const originalPoliticalStatus = ref(null)
+
+// 被锁定的政治面貌ID集合（这些政治面貌一旦设置就无法修改）
+// 如需修改被锁定的政治面貌类型，请修改此数组
+const LOCKED_POLITICAL_STATUS_IDS = [72] // 目前只有中共党员(72)被锁定
+// 未来如果需要锁定其他政治面貌，可以在这里添加，例如：[72, 73] 来同时锁定中共党员和共青团员
+
+// 检查政治面貌是否被锁定
+// 用于判断某个政治面貌ID是否在被锁定的列表中
+const isPoliticalStatusLocked = (politicalStatusId) => {
+  return LOCKED_POLITICAL_STATUS_IDS.includes(politicalStatusId)
+}
+
+// 获取政治面貌名称
+// 根据政治面貌ID获取对应的名称，用于显示提示信息
+const getPoliticalStatusName = (politicalStatusId) => {
+  const option = politicalStatusOptions.value.find(opt => opt.id === politicalStatusId)
+  return option ? option.name : '未知'
+}
+
+// 获取可用的政治面貌选项
+// 如果当前已经是锁定政治面貌，则只显示该锁定政治面貌
+// 如果当前不是锁定政治面貌，则显示所有非锁定政治面貌
+const availablePoliticalOptions = computed(() => {
+  if (isEdit.value && isPoliticalStatusLocked(originalPoliticalStatus.value)) {
+    // 如果当前已经是锁定政治面貌，只显示该锁定政治面貌
+    return politicalStatusOptions.value.filter(opt => opt.id === originalPoliticalStatus.value)
+  } else {
+    // 如果当前不是锁定政治面貌，显示所有非锁定政治面貌
+    return politicalStatusOptions.value.filter(opt => !isPoliticalStatusLocked(opt.id))
+  }
+})
 
 // 批量导入相关
 const importDialogVisible = ref(false)
@@ -1714,7 +1744,6 @@ const formData = reactive({
   hasSocialSecurity: 0, // 改为数字类型
   hasMedicalInsurance: 0, // 改为数字类型
   isVeteran: 0, // 改为数字类型
-  isVillageCommittee: 0, // 改为数字类型
   // 新增字段
   maritalStatusId: null, // 改为ID字段
   educationLevelId: null, // 改为ID字段
@@ -1842,17 +1871,13 @@ const loadData = async () => {
     if (response.code === 200) {
       const villagers = response.data.list || []
       
-      // 过滤掉name为XXX的用户（用于生成模板的示例数据）
-      const filteredVillagers = villagers.filter(villager => villager.name !== 'XXX')
-      
       // 先设置数据，让界面先显示
-      villagersData.value = filteredVillagers
+      villagersData.value = villagers
       total.value = response.data.total || 0
-      
       
       // 异步加载图片URL（使用优化的缓存机制）
       // 使用 Promise.allSettled 来避免 forEach 的异步问题
-      const imagePromises = filteredVillagers.map(async (villager, index) => {
+      const imagePromises = villagers.map(async (villager, index) => {
         if (villager.photoUrl) {
           try {
             const photoUrl = await getPhotoUrl(villager.photoUrl)
@@ -1871,15 +1896,7 @@ const loadData = async () => {
       Promise.allSettled(imagePromises)
       
       // 启动缓存清理定时器
-      startCacheCleanup()
       
-      // 预加载下一页的图片（如果存在）
-      if (response.data.total > currentPage.value * pageSize.value) {
-        // 延迟预加载，避免影响当前页面的显示
-        setTimeout(() => {
-          preloadImages(filteredVillagers)
-        }, 1000)
-      }
     } else {
       ElMessage.error(response.message || '获取数据失败')
     }
@@ -1903,44 +1920,9 @@ const toggleDisplayMode = () => {
 
 
 // 图片缓存管理
-const imageCache = new Map()
-const CACHE_SIZE_LIMIT = 100 // 最大缓存图片数量
-const CACHE_EXPIRE_TIME = 30 * 60 * 1000 // 缓存过期时间：30分钟
 
-// 缓存项结构
-class CacheItem {
-  constructor(blobUrl, timestamp) {
-    this.blobUrl = blobUrl
-    this.timestamp = timestamp
-  }
-  
-  isExpired() {
-    return Date.now() - this.timestamp > CACHE_EXPIRE_TIME
-  }
-}
 
-// 清理过期缓存
-const cleanExpiredCache = () => {
-  const now = Date.now()
-  for (const [key, item] of imageCache.entries()) {
-    if (item.isExpired()) {
-      URL.revokeObjectURL(item.blobUrl)
-      imageCache.delete(key)
-    }
-  }
-}
-
-// 清理最旧的缓存项（当缓存达到限制时）
-const cleanOldestCache = () => {
-  if (imageCache.size >= CACHE_SIZE_LIMIT) {
-    const oldestKey = imageCache.keys().next().value
-    const oldestItem = imageCache.get(oldestKey)
-    URL.revokeObjectURL(oldestItem.blobUrl)
-    imageCache.delete(oldestKey)
-  }
-}
-
-// 获取图片完整URL（带token认证和缓存管理）
+// 获取图片完整URL（带token认证）
 const getPhotoUrl = async (photoPath) => {
   if (!photoPath || typeof photoPath !== 'string') {
     return null
@@ -1951,25 +1933,7 @@ const getPhotoUrl = async (photoPath) => {
     return photoPath
   }
 
-  // 检查缓存
-  if (imageCache.has(photoPath)) {
-    const cacheItem = imageCache.get(photoPath)
-    if (!cacheItem.isExpired()) {
-      return cacheItem.blobUrl
-    } else {
-      // 清理过期缓存
-      URL.revokeObjectURL(cacheItem.blobUrl)
-      imageCache.delete(photoPath)
-    }
-  }
-
   try {
-    // 清理过期缓存
-    cleanExpiredCache()
-    
-    // 如果缓存达到限制，清理最旧的项
-    cleanOldestCache()
-    
     // 将反斜杠转换为正斜杠，确保路径格式正确
     const normalizedPath = photoPath.replace(/\\/g, '/')
     
@@ -1984,9 +1948,6 @@ const getPhotoUrl = async (photoPath) => {
     const blob = new Blob([response])
     const blobUrl = URL.createObjectURL(blob)
     
-    // 缓存blob URL和时间戳
-    imageCache.set(photoPath, new CacheItem(blobUrl, Date.now()))
-    
     return blobUrl
   } catch (error) {
     console.error('加载图片失败:', error)
@@ -1994,95 +1955,10 @@ const getPhotoUrl = async (photoPath) => {
   }
 }
 
-// 清理所有图片缓存
-const clearImageCache = () => {
-  for (const [key, item] of imageCache.entries()) {
-    URL.revokeObjectURL(item.blobUrl)
-  }
-  imageCache.clear()
-  console.log('图片缓存已清理')
-}
-
-// 获取缓存统计信息
-const getCacheStats = () => {
-  return {
-    size: imageCache.size,
-    limit: CACHE_SIZE_LIMIT,
-    keys: Array.from(imageCache.keys())
-  }
-}
 
 
-// 预加载图片（在后台静默加载）
-const preloadImages = async (villagers) => {
-  const preloadPromises = villagers
-    .filter(villager => villager.photoUrl && !villager.photoUrl.startsWith('blob:'))
-    .map(async (villager) => {
-      try {
-        const photoUrl = await getPhotoUrl(villager.photoUrl)
-        // 找到对应的村民并更新photoUrl
-        const index = villagersData.value.findIndex(v => v.id === villager.id)
-        if (index !== -1) {
-          villagersData.value[index].photoUrl = photoUrl
-        }
-      } catch (error) {
-        console.error(`预加载图片失败: ${villager.name}`, error)
-      }
-    })
-  
-  // 并行预加载，不等待完成
-  Promise.allSettled(preloadPromises)
-}
 
-// 智能缓存清理（在内存压力大时自动清理）
-const smartCacheCleanup = () => {
-  // 如果缓存超过限制的80%，清理最旧的20%
-  if (imageCache.size > CACHE_SIZE_LIMIT * 0.8) {
-    const itemsToRemove = Math.floor(imageCache.size * 0.2)
-    const sortedEntries = Array.from(imageCache.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp)
-    
-    for (let i = 0; i < itemsToRemove; i++) {
-      const [key, item] = sortedEntries[i]
-      URL.revokeObjectURL(item.blobUrl)
-      imageCache.delete(key)
-    }
-    
-    console.log(`智能清理：移除了 ${itemsToRemove} 个缓存项`)
-  }
-}
 
-// 定期清理过期缓存（每5分钟执行一次）
-let cacheCleanupInterval = null
-
-const startCacheCleanup = () => {
-  if (cacheCleanupInterval) {
-    clearInterval(cacheCleanupInterval)
-  }
-  
-  cacheCleanupInterval = setInterval(() => {
-    cleanExpiredCache()
-    smartCacheCleanup()
-  }, 5 * 60 * 1000) // 5分钟
-}
-
-const stopCacheCleanup = () => {
-  if (cacheCleanupInterval) {
-    clearInterval(cacheCleanupInterval)
-    cacheCleanupInterval = null
-  }
-}
-
-// 调试功能：在控制台暴露缓存管理方法
-if (import.meta.env.DEV) {
-  window.villagerImageCache = {
-    stats: getCacheStats,
-    clear: clearImageCache,
-    cleanup: cleanExpiredCache,
-    smartCleanup: smartCacheCleanup
-  }
-  console.log('图片缓存调试工具已加载，使用 window.villagerImageCache 访问')
-}
 
 // 搜索功能
 const handleSearch = () => {
@@ -2150,7 +2026,7 @@ const handleAddVillager = () => {
     } else if (key === 'occupation') {
       formData[key] = '农民' // 默认职业
     } else if (key === 'hasSocialSecurity' || key === 'hasMedicalInsurance' || key === 'isVeteran' || 
-               key === 'isVillageCommittee' || key === 'isPoor' || key === 'isDisabled' || 
+               key === 'isPoor' || key === 'isDisabled' || 
                key === 'isOnlyChildFamily' || key === 'isMartyrFamily' || key === 'hasOtherSubsidy') {
       formData[key] = 0 // 数字类型的布尔字段默认为0
     } else if (key === 'age' || key === 'familySize') {
@@ -2160,6 +2036,10 @@ const handleAddVillager = () => {
     }
   })
   console.log('表单数据重置完成，已设置默认测试信息:', formData)
+
+  // 重置原始政治面貌
+  originalPoliticalStatus.value = null
+
   dialogVisible.value = true
 }
 
@@ -2235,6 +2115,7 @@ const handleEdit = async (row) => {
         // 新增字段
         maritalStatusId: data.maritalStatusId,  // 使用ID字段
         educationLevelId: data.educationLevelId,  // 使用ID字段
+        politicalStatusId: data.politicalStatusId,  // 使用ID字段
         ethnicity: data.ethnicity || '',
         occupation: data.occupation || '',
         healthStatus: data.healthStatus,  // 保持数字类型
@@ -2254,10 +2135,14 @@ const handleEdit = async (row) => {
       console.log('- 福利状态ID:', data.welfareStatusId, '福利状态标签:', data.welfareStatusLabel)
       console.log('- 婚姻状况ID:', data.maritalStatusId, '婚姻状况标签:', data.maritalStatusLabel)
       console.log('- 学历ID:', data.educationLevelId, '学历标签:', data.educationLevelLabel)
+      console.log('- 政治面貌ID:', data.politicalStatusId, '政治面貌标签:', data.politicalStatusLabel)
       
       // 逐个更新reactive对象的属性，保持响应式
       Object.assign(formData, formDataValue)
-      
+
+      // 保存原始政治面貌，用于判断是否为中共党员
+      originalPoliticalStatus.value = data.politicalStatusId
+
       isEdit.value = true
       dialogVisible.value = true
       
@@ -2269,6 +2154,7 @@ const handleEdit = async (row) => {
       console.log('- welfareStatusId:', formData.welfareStatusId, '类型:', typeof formData.welfareStatusId)
       console.log('- maritalStatusId:', formData.maritalStatusId, '类型:', typeof formData.maritalStatusId)
       console.log('- educationLevelId:', formData.educationLevelId, '类型:', typeof formData.educationLevelId)
+      console.log('- politicalStatusId:', formData.politicalStatusId, '类型:', typeof formData.politicalStatusId)
     } else {
       ElMessage.error(response.message || '获取详情失败')
     }
@@ -2312,9 +2198,26 @@ const handleDelete = (row) => {
 // 提交表单
 const handleSubmit = async () => {
   try {
+    // 检查政治面貌锁定情况
+    if (isEdit.value) {
+      const originalData = villagersData.value.find(v => v.id === formData.id)
+
+      // 如果试图改为锁定政治面貌（例如中共党员），阻止操作
+      if (isPoliticalStatusLocked(formData.politicalStatusId) && originalData && !isPoliticalStatusLocked(originalData.politicalStatusId)) {
+        ElMessage.error(`政治面貌无法主动设置为${getPoliticalStatusName(formData.politicalStatusId)}。如需设置，请联系管理员。`)
+        return
+      }
+
+      // 如果当前已经是锁定政治面貌，但试图改为其他值，则阻止
+      if (originalData && isPoliticalStatusLocked(originalData.politicalStatusId) && !isPoliticalStatusLocked(formData.politicalStatusId)) {
+        ElMessage.error(`${getPoliticalStatusName(originalData.politicalStatusId)}的政治面貌已被锁定，无法修改为其他政治面貌。`)
+        return
+      }
+    }
+
     // 表单验证
     await formRef.value.validate()
-    
+
     // 准备提交数据
     const submitData = { ...formData }
     
@@ -2331,9 +2234,8 @@ const handleSubmit = async () => {
     console.log('- 福利状态ID:', submitData.welfareStatusId)
     console.log('- 婚姻状况ID:', submitData.maritalStatusId)
     console.log('- 学历ID:', submitData.educationLevelId)
-    console.log('- 政治面貌ID:', submitData.politicalStatusId)
+    console.log('- 政治面貌ID:', submitData.politicalStatusId, '政治面貌标签:', politicalStatusOptions.value.find(opt => opt.id === submitData.politicalStatusId)?.name || '未知')
     console.log('- 健康状态:', submitData.healthStatus)
-    console.log('- 是否村委:', submitData.isVillageCommittee)
     
     let response
     if (isEdit.value) {
@@ -2450,18 +2352,20 @@ const handleFileChange = (file) => {
   reader.readAsDataURL(file.raw)
 }
 
-const beforeImageUpload = (file) => {
+const beforeImageUpload = async (file) => {
   const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
+  const isLt5M = file.size / 1024 / 1024 < 5
 
   if (!isImage) {
     ElMessage.error('只能上传图片文件!')
     return false
   }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
+  if (!isLt5M) {
+    ElMessage.error('图片大小不能超过 5MB!')
     return false
   }
+
+
   return false // 阻止自动上传
 }
 
@@ -2826,8 +2730,12 @@ const handleConfirmGenerateTemplate = async () => {
   try {
     exportLoading.value = true
     
-    // 生成完整路径，文件名固定为"村民信息导入模板.xlsx"
-    const fullPath = `${generateTemplateForm.directory}/村民信息导入模板.xlsx`
+    // 生成时间戳
+    const now = new Date()
+    const timestamp = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_')
+    
+    // 生成完整路径，文件名包含时间戳
+    const fullPath = `${generateTemplateForm.directory}/村民信息导入模板_${timestamp}.xlsx`
     
     // 构建请求参数，只需要保存路径
     const request = {
@@ -2971,8 +2879,6 @@ onMounted(async () => {
 // 组件卸载时清理资源
 onUnmounted(() => {
   window.removeEventListener('error', resizeObserverError)
-  stopCacheCleanup()
-  clearImageCache()
 })
 </script>
 
@@ -4554,6 +4460,33 @@ onUnmounted(() => {
 .path-select-dialog .el-button--primary:hover {
   background: #66b3ff;
   border-color: #66b3ff;
+}
+
+/* 政治面貌提示样式 */
+.political-status-tip {
+  margin-top: 8px;
+}
+
+.political-status-tip .el-alert {
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.political-status-tip .el-alert--info {
+  background-color: #e7f3ff;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+}
+
+.political-status-tip .el-alert__icon {
+  color: #17a2b8;
+  font-size: 14px;
+}
+
+.political-status-tip .el-alert__title {
+  font-size: 12px;
+  font-weight: 400;
+  margin: 0;
 }
 
 /* 移动端适配 */

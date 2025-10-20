@@ -3,6 +3,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Home from '../views/Home.vue'
 import { useMenuStore } from '../store/menu.js'
+import { useUserStore } from '../store/index.js'
 
 // 定义路由配置
 const routes = [
@@ -280,7 +281,7 @@ const routes = [
               roles: ['admin'],
               isMenu: true
             }
-          }
+          },
         ]
       },
       
@@ -321,6 +322,13 @@ const routes = [
         redirect: '/economy/transactions'
       }
     ]
+  },
+  
+  // 404页面
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    redirect: '/login'
   }
 ]
 
@@ -335,6 +343,33 @@ const router = createRouter({
       return { top: 0, behavior: 'smooth' }
     }
   }
+})
+
+// 路由守卫
+router.beforeEach((to, from, next) => {
+  const userStore = useUserStore()
+  
+  // 从localStorage加载用户数据（如果store中没有）
+  if (!userStore.userInfo && localStorage.getItem('userInfo')) {
+    userStore.loadUserData()
+  }
+  
+  // 检查是否需要认证
+  if (to.meta.requiresAuth !== false) {
+    if (!userStore.isLoggedIn) {
+      // 未登录，重定向到登录页
+      next('/login')
+      return
+    }
+  }
+  
+  // 如果已登录且访问登录页，重定向到首页
+  if (to.path === '/login' && userStore.isLoggedIn) {
+    next('/')
+    return
+  }
+  
+  next()
 })
 
 // 动态路由生成函数
