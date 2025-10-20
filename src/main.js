@@ -9,7 +9,6 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 // 导入DataV Vue3
 import DataV from '@kjgl77/datav-vue3'
-import { setupNaive } from './plugins/naive'
 import { setupEcharts } from './plugins/echarts'
 // 导入用户store
 import { useUserStore } from './store/index.js'
@@ -20,7 +19,6 @@ const app = createApp(App)
 // 创建Pinia实例
 const pinia = createPinia()
 
-setupNaive(app)
 setupEcharts(app)
 
 // 使用插件
