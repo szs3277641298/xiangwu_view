@@ -2,7 +2,7 @@
   <div class="wall">
     <div v-for="item in formatted" :key="item.name" class="wall__item">
       <div class="wall__title">{{ item.name }}</div>
-      <n-number-animation
+      <NumberAnimation
         class="wall__count"
         :from="0"
         :to="item.count"
@@ -10,7 +10,7 @@
         show-separator
       />
       <template v-if="item.percent !== null">
-        <n-progress :percentage="item.percent" type="line" :height="6" processing color="#4E9AFE" />
+        <el-progress :percentage="item.percent" :stroke-width="6" :show-text="false" color="#4E9AFE" />
         <div class="wall__percent">{{ item.percent.toFixed(1) }}%</div>
       </template>
     </div>
@@ -20,6 +20,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { CountResponse } from '@/types/bigscreen'
+import NumberAnimation from '@/components/common/NumberAnimation.vue'
 
 const props = defineProps<{
   items: CountResponse[]

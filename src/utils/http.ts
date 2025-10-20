@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
+import { ElMessage } from 'element-plus'
 import type { ApiResult } from '@/types/bigscreen'
-import { message } from '@/plugins/naive'
 
 type AnyObject = Record<string, any>
 
@@ -44,7 +44,7 @@ http.interceptors.response.use(
         return normalizeKeys(payload.data)
       }
 
-      message.error(payload.msg || '请求失败，请稍后重试')
+      ElMessage.error(payload.msg || '请求失败，请稍后重试')
       return Promise.reject(new Error(payload.msg || '请求失败'))
     }
 
@@ -52,7 +52,7 @@ http.interceptors.response.use(
   },
   (error) => {
     const errMsg = error?.response?.data?.msg || error.message || '网络异常'
-    message.error(errMsg)
+    ElMessage.error(errMsg)
     return Promise.reject(error)
   }
 )

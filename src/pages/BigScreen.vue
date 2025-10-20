@@ -14,30 +14,32 @@
           <GlobalKpiGrid :overview="villageOverview" />
         </div>
         <div class="header__right">
-          <n-space align="center" :size="12">
-            <n-button type="primary" size="small" ghost :loading="refreshLoading" @click="handleRefresh">
+          <el-space align="center" :size="12">
+            <el-button type="primary" size="small" plain :loading="refreshLoading" @click="handleRefresh">
               <template #icon>
-                <n-icon><RefreshOutline /></n-icon>
+                <el-icon><RefreshOutline /></el-icon>
               </template>
               刷新全部
-            </n-button>
-            <n-switch v-model:value="autoRefreshModel" size="small">
-              <template #checked>自动刷新</template>
-              <template #unchecked>手动</template>
-            </n-switch>
-            <n-button size="small" ghost @click="handleExport">
+            </el-button>
+            <el-switch
+              v-model="autoRefreshModel"
+              size="small"
+              active-text="自动刷新"
+              inactive-text="手动"
+            />
+            <el-button size="small" plain @click="handleExport">
               <template #icon>
-                <n-icon><DownloadOutline /></n-icon>
+                <el-icon><DownloadOutline /></el-icon>
               </template>
               导出图片
-            </n-button>
-            <n-button size="small" ghost @click="handleFullScreen">
+            </el-button>
+            <el-button size="small" plain @click="handleFullScreen">
               <template #icon>
-                <n-icon><ExpandOutline /></n-icon>
+                <el-icon><ExpandOutline /></el-icon>
               </template>
               {{ isFullscreen ? '退出全屏' : '全屏' }}
-            </n-button>
-          </n-space>
+            </el-button>
+          </el-space>
         </div>
       </header>
 
@@ -126,8 +128,8 @@
             <PartyOverviewCards :data="overviewMap" />
           </ChartCard>
 
-          <n-tabs v-model:value="activeTab" type="line" class="column__tabs">
-            <n-tab-pane name="overview" tab="综合概览">
+          <el-tabs v-model="activeTab" type="border-card" class="column__tabs" stretch>
+            <el-tab-pane name="overview" label="综合概览">
               <ChartCard
                 title="村庄综合指标"
                 :loading="loading('villageOverview')"
@@ -137,8 +139,8 @@
               >
                 <GlobalKpiGrid :overview="villageOverview" />
               </ChartCard>
-            </n-tab-pane>
-            <n-tab-pane name="economy" tab="集体经济">
+            </el-tab-pane>
+            <el-tab-pane name="economy" label="集体经济">
               <div class="tab-grid">
                 <ChartCard
                   title="项目状态分布"
@@ -177,8 +179,8 @@
                   <EconomyTransactionList :data="economyTransactionStats" />
                 </ChartCard>
               </div>
-            </n-tab-pane>
-            <n-tab-pane name="party" tab="党费">
+            </el-tab-pane>
+            <el-tab-pane name="party" label="党费">
               <div class="tab-grid">
                 <ChartCard
                   title="缴费状态分布"
@@ -217,8 +219,8 @@
                   <PartyOverviewCards :data="partyOverview" />
                 </ChartCard>
               </div>
-            </n-tab-pane>
-          </n-tabs>
+            </el-tab-pane>
+          </el-tabs>
         </section>
 
         <section class="column column--right">
@@ -271,7 +273,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import dayjs from 'dayjs'
-import screenfull from 'screenfull'
+import screenfull from '@/utils/screenfull'
 import { RefreshOutline, DownloadOutline, ExpandOutline } from '@vicons/ionicons5'
 import type { CountResponse } from '@/types/bigscreen'
 import { useBigScreenStore } from '@/stores/bigscreen'
@@ -531,6 +533,23 @@ watch(activeTab, (tab) => {
   justify-self: end;
 }
 
+.header__right :deep(.el-button.is-plain) {
+  color: #e6f0ff;
+  border-color: rgba(78, 154, 254, 0.4);
+  background-color: rgba(18, 30, 55, 0.65);
+}
+
+.header__right :deep(.el-button.is-plain:hover),
+.header__right :deep(.el-button.is-plain:focus) {
+  border-color: rgba(78, 154, 254, 0.8);
+  background-color: rgba(30, 54, 96, 0.9);
+  color: #ffffff;
+}
+
+.header__right :deep(.el-switch__label) {
+  color: #e6f0ff;
+}
+
 .bigscreen__content {
   position: relative;
   z-index: 1;
@@ -563,20 +582,28 @@ watch(activeTab, (tab) => {
   gap: 16px;
 }
 
-:deep(.n-tabs-nav) {
+:deep(.el-tabs__header) {
   margin-bottom: 16px;
 }
 
-:deep(.n-card) {
-  background: rgba(18, 30, 55, 0.9);
+:deep(.el-tabs--border-card) {
+  background: rgba(18, 30, 55, 0.6);
+  border: 1px solid rgba(78, 154, 254, 0.2);
+  border-radius: 12px;
 }
 
-:deep(.n-tabs-tab__label) {
+:deep(.el-tabs--border-card > .el-tabs__header) {
+  border-bottom: 1px solid rgba(78, 154, 254, 0.2);
+  background: transparent;
+}
+
+:deep(.el-tabs__item) {
   color: #e6f0ff;
 }
 
-:deep(.n-tabs .n-tab-pane) {
+:deep(.el-tabs__content) {
   padding: 0;
+  background: transparent;
 }
 
 .column--right {
