@@ -1,5 +1,6 @@
 <template>
-  <div id="app">
+  <n-config-provider :theme="naiveDarkTheme" :theme-overrides="naiveThemeOverrides">
+    <div id="app">
     <!-- 数据大屏页面 - 全屏显示，无侧边栏 -->
     <template v-if="currentRoute.meta.hideSidebar">
       <router-view />
@@ -69,10 +70,13 @@
     <template v-else>
       <router-view />
     </template>
-  </div>
+    </div>
+  </n-config-provider>
 </template>
 
 <script setup>
+import { naiveDarkTheme, naiveThemeOverrides } from './plugins/naive'
+
 import { ref, computed, onMounted, watch, defineExpose, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

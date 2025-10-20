@@ -40,6 +40,20 @@ const routes = [
         }
       },
       {
+        path: '/bigscreen',
+        name: 'BigScreen',
+        component: () => import('../pages/BigScreen.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '乡务可视化大屏',
+          icon: 'el-icon-data-board',
+          roles: ['admin', 'guest'],
+          isMenu: false,
+          hideSidebar: true
+        }
+      },
+
+      {
         path: '/dashboard/data-screen',
         name: 'DataScreen',
         component: () => import('../views/dashboard/DataScreen.vue'),
